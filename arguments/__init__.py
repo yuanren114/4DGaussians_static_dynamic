@@ -26,16 +26,22 @@ class ParamGroup:
                 key = key[1:]
             t = type(value)
             value = value if not fill_none else None 
+            option = "--" + key
+            dashed_option = "--" + key.replace("_", "-")
+            option_strings = [option]
+            if dashed_option != option:
+                option_strings.append(dashed_option)
             if shorthand:
+                option_strings.append("-" + key[0:1])
                 if t == bool:
-                    group.add_argument("--" + key, ("-" + key[0:1]), default=value, action="store_true")
+                    group.add_argument(*option_strings, default=value, action="store_true")
                 else:
-                    group.add_argument("--" + key, ("-" + key[0:1]), default=value, type=t)
+                    group.add_argument(*option_strings, default=value, type=t)
             else:
                 if t == bool:
-                    group.add_argument("--" + key, default=value, action="store_true")
+                    group.add_argument(*option_strings, default=value, action="store_true")
                 else:
-                    group.add_argument("--" + key, default=value, type=t)
+                    group.add_argument(*option_strings, default=value, type=t)
 
     def extract(self, args):
         group = GroupParams()
@@ -102,6 +108,9 @@ class ModelHiddenParams(ParamGroup):
         self.grid_pe=0 # useless, I was trying to add positional encoding to hexplane's features
         self.static_mlp=False # useless
         self.apply_rotation=False # useless
+        self.motion_separation=False # enable lightweight static/dynamic motion gate
+        self.motion_mask_lambda=0.0 # optional sparsity regularizer weight for the motion gate
+        self.motion_gate_rot_scale=False # optionally gate scale and rotation deltas too
 
         
         super().__init__(parser, "ModelHiddenParams")

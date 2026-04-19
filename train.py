@@ -11,6 +11,7 @@
 import numpy as np
 import random
 import os, sys
+import json
 import torch
 from random import randint
 from utils.loss_utils import l1_loss, ssim, l2_loss, lpips_loss
@@ -209,6 +210,11 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
             # tv_loss = 0
             tv_loss = gaussians.compute_regulation(hyper.time_smoothness_weight, hyper.l1_time_planes, hyper.plane_tv_weight)
             loss += tv_loss
+        motion_mask_loss = None
+        if hyper.motion_separation and hyper.motion_mask_lambda != 0:
+            motion_mask_loss = gaussians.motion_mask_loss()
+            if motion_mask_loss is not None:
+                loss += hyper.motion_mask_lambda * motion_mask_loss
         if opt.lambda_dssim != 0:
             ssim_loss = ssim(image_tensor,gt_image_tensor)
             loss += opt.lambda_dssim * (1.0-ssim_loss)
@@ -240,10 +246,25 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
 
             # Log and save
             timer.pause()
-            training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, [pipe, background], stage, scene.dataset_type)
+            motion_mask_stats = gaussians.motion_mask_stats() if hyper.motion_separation else None
+            training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, [pipe, background], stage, scene.dataset_type, motion_mask_loss, motion_mask_stats)
+            if motion_mask_stats is not None and iteration % 100 == 0:
+                log_path = os.path.join(scene.model_path, "motion_mask_stats.jsonl")
+                with open(log_path, "a") as stats_file:
+                    stats_record = {"iteration": iteration, "stage": stage}
+                    stats_record.update(motion_mask_stats)
+                    if motion_mask_loss is not None:
+                        stats_record["regularizer"] = motion_mask_loss.item()
+                    stats_file.write(json.dumps(stats_record) + "\n")
             if (iteration in saving_iterations):
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration, stage)
+                if hyper.motion_separation:
+                    if stage == "coarse":
+                        motion_mask_dir = "coarse_iteration_{}".format(iteration)
+                    else:
+                        motion_mask_dir = "iteration_{}".format(iteration)
+                    gaussians.save_motion_mask_ply(os.path.join(scene.model_path, "point_cloud", motion_mask_dir, "motion_mask_colors.ply"))
             if dataset.render_process:
                 if (iteration < 1000 and iteration % 10 == 9) \
                     or (iteration < 3000 and iteration % 50 == 49) \
@@ -332,11 +353,18 @@ def prepare_output_and_logger(expname):
         print("Tensorboard not available: not logging progress")
     return tb_writer
 
-def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs, stage, dataset_type):
+def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs, stage, dataset_type, motion_mask_loss=None, motion_mask_stats=None):
     if tb_writer:
         tb_writer.add_scalar(f'{stage}/train_loss_patches/l1_loss', Ll1.item(), iteration)
         tb_writer.add_scalar(f'{stage}/train_loss_patchestotal_loss', loss.item(), iteration)
         tb_writer.add_scalar(f'{stage}/iter_time', elapsed, iteration)
+        if motion_mask_stats is not None:
+            tb_writer.add_scalar(f'{stage}/motion_mask/mean', motion_mask_stats["mean"], iteration)
+            tb_writer.add_scalar(f'{stage}/motion_mask/std', motion_mask_stats["std"], iteration)
+            tb_writer.add_scalar(f'{stage}/motion_mask/dynamic_fraction_gt_0_5', motion_mask_stats["dynamic_fraction"], iteration)
+            tb_writer.add_scalar(f'{stage}/motion_mask/static_fraction_le_0_5', motion_mask_stats["static_fraction"], iteration)
+        if motion_mask_loss is not None:
+            tb_writer.add_scalar(f'{stage}/motion_mask/regularizer_mean', motion_mask_loss.item(), iteration)
         
     
     # Report test and samples of training set
@@ -377,6 +405,9 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
 
         if tb_writer:
             tb_writer.add_histogram(f"{stage}/scene/opacity_histogram", scene.gaussians.get_opacity, iteration)
+            motion_mask = scene.gaussians.get_last_motion_mask()
+            if motion_mask is not None:
+                tb_writer.add_histogram(f"{stage}/scene/motion_mask_values", motion_mask.detach(), iteration)
             
             tb_writer.add_scalar(f'{stage}/total_points', scene.gaussians.get_xyz.shape[0], iteration)
             tb_writer.add_scalar(f'{stage}/deformation_rate', scene.gaussians._deformation_table.sum()/scene.gaussians.get_xyz.shape[0], iteration)

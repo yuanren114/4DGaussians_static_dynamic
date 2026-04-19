@@ -26,6 +26,7 @@ class Deformation(nn.Module):
         self.grid = HexPlaneField(args.bounds, args.kplanes_config, args.multires)
         # breakpoint()
         self.args = args
+        self.last_motion_mask = None
         # self.args.empty_voxel=True
         if self.args.empty_voxel:
             self.empty_voxel = DenseGrid(channels=1, world_size=[64,64,64])
@@ -63,6 +64,8 @@ class Deformation(nn.Module):
         self.rotations_deform = nn.Sequential(nn.ReLU(),nn.Linear(self.W,self.W),nn.ReLU(),nn.Linear(self.W, 4))
         self.opacity_deform = nn.Sequential(nn.ReLU(),nn.Linear(self.W,self.W),nn.ReLU(),nn.Linear(self.W, 1))
         self.shs_deform = nn.Sequential(nn.ReLU(),nn.Linear(self.W,self.W),nn.ReLU(),nn.Linear(self.W, 16*3))
+        if self.args.motion_separation:
+            self.motion_mask_deform = nn.Sequential(nn.ReLU(),nn.Linear(self.W,self.W),nn.ReLU(),nn.Linear(self.W, 1))
 
     def query_time(self, rays_pts_emb, scales_emb, rotations_emb, time_feature, time_emb):
 
@@ -96,6 +99,11 @@ class Deformation(nn.Module):
         return rays_pts_emb[:, :3] + dx
     def forward_dynamic(self,rays_pts_emb, scales_emb, rotations_emb, opacity_emb, shs_emb, time_feature, time_emb):
         hidden = self.query_time(rays_pts_emb, scales_emb, rotations_emb, time_feature, time_emb)
+        motion_mask = None
+        self.last_motion_mask = None
+        if self.args.motion_separation:
+            motion_mask = torch.sigmoid(self.motion_mask_deform(hidden))
+            self.last_motion_mask = motion_mask
         if self.args.static_mlp:
             mask = self.static_mlp(hidden)
         elif self.args.empty_voxel:
@@ -107,16 +115,22 @@ class Deformation(nn.Module):
             pts = rays_pts_emb[:,:3]
         else:
             dx = self.pos_deform(hidden)
-            pts = torch.zeros_like(rays_pts_emb[:,:3])
-            pts = rays_pts_emb[:,:3]*mask + dx
+            if self.args.motion_separation:
+                pts = rays_pts_emb[:,:3] + motion_mask * dx
+            else:
+                pts = torch.zeros_like(rays_pts_emb[:,:3])
+                pts = rays_pts_emb[:,:3]*mask + dx
         if self.args.no_ds :
             
             scales = scales_emb[:,:3]
         else:
             ds = self.scales_deform(hidden)
 
-            scales = torch.zeros_like(scales_emb[:,:3])
-            scales = scales_emb[:,:3]*mask + ds
+            if self.args.motion_separation and self.args.motion_gate_rot_scale:
+                scales = scales_emb[:,:3] + motion_mask * ds
+            else:
+                scales = torch.zeros_like(scales_emb[:,:3])
+                scales = scales_emb[:,:3]*mask + ds
             
         if self.args.no_dr :
             rotations = rotations_emb[:,:4]
@@ -127,7 +141,10 @@ class Deformation(nn.Module):
             if self.args.apply_rotation:
                 rotations = batch_quaternion_multiply(rotations_emb, dr)
             else:
-                rotations = rotations_emb[:,:4] + dr
+                if self.args.motion_separation and self.args.motion_gate_rot_scale:
+                    rotations = rotations_emb[:,:4] + motion_mask * dr
+                else:
+                    rotations = rotations_emb[:,:4] + dr
 
         if self.args.no_do :
             opacity = opacity_emb[:,:1] 
@@ -158,6 +175,8 @@ class Deformation(nn.Module):
             if  "grid" in name:
                 parameter_list.append(param)
         return parameter_list
+    def get_motion_mask(self):
+        return self.last_motion_mask
 class deform_network(nn.Module):
     def __init__(self, args) :
         super(deform_network, self).__init__()
@@ -214,6 +233,8 @@ class deform_network(nn.Module):
         return self.deformation_net.get_mlp_parameters() + list(self.timenet.parameters())
     def get_grid_parameters(self):
         return self.deformation_net.get_grid_parameters()
+    def get_motion_mask(self):
+        return self.deformation_net.get_motion_mask()
 
 def initialize_weights(m):
     if isinstance(m, nn.Linear):

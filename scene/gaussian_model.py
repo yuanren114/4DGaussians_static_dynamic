@@ -247,6 +247,48 @@ class GaussianModel:
         torch.save(self._deformation.state_dict(),os.path.join(path, "deformation.pth"))
         torch.save(self._deformation_table,os.path.join(path, "deformation_table.pth"))
         torch.save(self._deformation_accum,os.path.join(path, "deformation_accum.pth"))
+        motion_mask = self.get_last_motion_mask()
+        if motion_mask is not None:
+            torch.save(motion_mask.detach().cpu(), os.path.join(path, "motion_mask_last.pt"))
+    def get_last_motion_mask(self):
+        if not hasattr(self._deformation, "get_motion_mask"):
+            return None
+        return self._deformation.get_motion_mask()
+    def motion_mask_loss(self):
+        motion_mask = self.get_last_motion_mask()
+        if motion_mask is None:
+            return None
+        return motion_mask.mean()
+    def motion_mask_stats(self):
+        motion_mask = self.get_last_motion_mask()
+        if motion_mask is None:
+            return None
+        mask = motion_mask.detach()
+        return {
+            "mean": mask.mean().item(),
+            "std": mask.std().item(),
+            "dynamic_fraction": (mask > 0.5).float().mean().item(),
+            "static_fraction": (mask <= 0.5).float().mean().item(),
+        }
+    def save_motion_mask_ply(self, path):
+        motion_mask = self.get_last_motion_mask()
+        if motion_mask is None:
+            return False
+        mkdir_p(os.path.dirname(path))
+        xyz = self._xyz.detach().cpu().numpy()
+        mask = motion_mask.detach().cpu().numpy().reshape(-1, 1)
+        blue = 1.0 - mask
+        red = mask
+        green = np.zeros_like(mask)
+        colors = np.concatenate([red, green, blue], axis=1)
+        normals = np.zeros_like(xyz)
+        dtype_full = [(attribute, 'f4') for attribute in ['x', 'y', 'z', 'nx', 'ny', 'nz', 'red', 'green', 'blue', 'motion_mask']]
+        elements = np.empty(xyz.shape[0], dtype=dtype_full)
+        attributes = np.concatenate((xyz, normals, colors, mask), axis=1)
+        elements[:] = list(map(tuple, attributes))
+        el = PlyElement.describe(elements, 'vertex')
+        PlyData([el]).write(path)
+        return True
     def save_ply(self, path):
         mkdir_p(os.path.dirname(path))
 
