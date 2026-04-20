@@ -27,6 +27,7 @@ class Deformation(nn.Module):
         # breakpoint()
         self.args = args
         self.last_motion_mask = None
+        self.last_dx = None
         # self.args.empty_voxel=True
         if self.args.empty_voxel:
             self.empty_voxel = DenseGrid(channels=1, world_size=[64,64,64])
@@ -101,6 +102,7 @@ class Deformation(nn.Module):
         hidden = self.query_time(rays_pts_emb, scales_emb, rotations_emb, time_feature, time_emb)
         motion_mask = None
         self.last_motion_mask = None
+        self.last_dx = None
         if self.args.motion_separation:
             motion_mask = torch.sigmoid(self.motion_mask_deform(hidden))
             self.last_motion_mask = motion_mask
@@ -113,8 +115,10 @@ class Deformation(nn.Module):
         # breakpoint()
         if self.args.no_dx:
             pts = rays_pts_emb[:,:3]
+            self.last_dx = torch.zeros_like(pts)
         else:
             dx = self.pos_deform(hidden)
+            self.last_dx = dx
             if self.args.motion_separation:
                 pts = rays_pts_emb[:,:3] + motion_mask * dx
             else:
@@ -177,6 +181,8 @@ class Deformation(nn.Module):
         return parameter_list
     def get_motion_mask(self):
         return self.last_motion_mask
+    def get_last_dx(self):
+        return self.last_dx
 class deform_network(nn.Module):
     def __init__(self, args) :
         super(deform_network, self).__init__()
@@ -235,6 +241,8 @@ class deform_network(nn.Module):
         return self.deformation_net.get_grid_parameters()
     def get_motion_mask(self):
         return self.deformation_net.get_motion_mask()
+    def get_last_dx(self):
+        return self.deformation_net.get_last_dx()
 
 def initialize_weights(m):
     if isinstance(m, nn.Linear):

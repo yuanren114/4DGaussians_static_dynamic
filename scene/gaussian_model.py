@@ -254,22 +254,48 @@ class GaussianModel:
         if not hasattr(self._deformation, "get_motion_mask"):
             return None
         return self._deformation.get_motion_mask()
+    def get_last_dx(self):
+        if not hasattr(self._deformation, "get_last_dx"):
+            return None
+        return self._deformation.get_last_dx()
     def motion_mask_loss(self):
         motion_mask = self.get_last_motion_mask()
         if motion_mask is None:
             return None
         return motion_mask.mean()
+    def motion_binarization_loss(self):
+        motion_mask = self.get_last_motion_mask()
+        if motion_mask is None:
+            return None
+        return (motion_mask * (1.0 - motion_mask)).mean()
+    def static_deformation_loss(self):
+        motion_mask = self.get_last_motion_mask()
+        dx = self.get_last_dx()
+        if motion_mask is None or dx is None:
+            return None
+        dx_norm = dx.norm(dim=-1, keepdim=True)
+        return ((1.0 - motion_mask) * dx_norm).mean()
     def motion_mask_stats(self):
         motion_mask = self.get_last_motion_mask()
         if motion_mask is None:
             return None
         mask = motion_mask.detach()
-        return {
+        stats = {
             "mean": mask.mean().item(),
             "std": mask.std().item(),
             "dynamic_fraction": (mask > 0.5).float().mean().item(),
             "static_fraction": (mask <= 0.5).float().mean().item(),
+            "fraction_gt_0_1": (mask > 0.1).float().mean().item(),
+            "fraction_gt_0_2": (mask > 0.2).float().mean().item(),
+            "fraction_gt_0_3": (mask > 0.3).float().mean().item(),
+            "fraction_gt_0_4": (mask > 0.4).float().mean().item(),
         }
+        dx = self.get_last_dx()
+        if dx is not None:
+            dx_norm = dx.detach().norm(dim=-1, keepdim=True)
+            stats["dx_norm_mean"] = dx_norm.mean().item()
+            stats["dx_norm_static_weighted_mean"] = ((1.0 - mask) * dx_norm).mean().item()
+        return stats
     def save_motion_mask_ply(self, path):
         motion_mask = self.get_last_motion_mask()
         if motion_mask is None:

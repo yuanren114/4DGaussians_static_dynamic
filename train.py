@@ -211,10 +211,20 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
             tv_loss = gaussians.compute_regulation(hyper.time_smoothness_weight, hyper.l1_time_planes, hyper.plane_tv_weight)
             loss += tv_loss
         motion_mask_loss = None
+        motion_bin_loss = None
+        static_deform_loss = None
         if hyper.motion_separation and hyper.motion_mask_lambda != 0:
             motion_mask_loss = gaussians.motion_mask_loss()
             if motion_mask_loss is not None:
                 loss += hyper.motion_mask_lambda * motion_mask_loss
+        if hyper.motion_separation and hyper.motion_bin_lambda != 0:
+            motion_bin_loss = gaussians.motion_binarization_loss()
+            if motion_bin_loss is not None:
+                loss += hyper.motion_bin_lambda * motion_bin_loss
+        if hyper.motion_separation and hyper.static_deform_lambda != 0:
+            static_deform_loss = gaussians.static_deformation_loss()
+            if static_deform_loss is not None:
+                loss += hyper.static_deform_lambda * static_deform_loss
         if opt.lambda_dssim != 0:
             ssim_loss = ssim(image_tensor,gt_image_tensor)
             loss += opt.lambda_dssim * (1.0-ssim_loss)
@@ -247,7 +257,7 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
             # Log and save
             timer.pause()
             motion_mask_stats = gaussians.motion_mask_stats() if hyper.motion_separation else None
-            training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, [pipe, background], stage, scene.dataset_type, motion_mask_loss, motion_mask_stats)
+            training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, [pipe, background], stage, scene.dataset_type, motion_mask_loss, motion_mask_stats, motion_bin_loss, static_deform_loss)
             if motion_mask_stats is not None and iteration % 100 == 0:
                 log_path = os.path.join(scene.model_path, "motion_mask_stats.jsonl")
                 with open(log_path, "a") as stats_file:
@@ -255,6 +265,10 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
                     stats_record.update(motion_mask_stats)
                     if motion_mask_loss is not None:
                         stats_record["regularizer"] = motion_mask_loss.item()
+                    if motion_bin_loss is not None:
+                        stats_record["binarization"] = motion_bin_loss.item()
+                    if static_deform_loss is not None:
+                        stats_record["static_deformation"] = static_deform_loss.item()
                     stats_file.write(json.dumps(stats_record) + "\n")
             if (iteration in saving_iterations):
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
@@ -353,7 +367,7 @@ def prepare_output_and_logger(expname):
         print("Tensorboard not available: not logging progress")
     return tb_writer
 
-def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs, stage, dataset_type, motion_mask_loss=None, motion_mask_stats=None):
+def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs, stage, dataset_type, motion_mask_loss=None, motion_mask_stats=None, motion_bin_loss=None, static_deform_loss=None):
     if tb_writer:
         tb_writer.add_scalar(f'{stage}/train_loss_patches/l1_loss', Ll1.item(), iteration)
         tb_writer.add_scalar(f'{stage}/train_loss_patchestotal_loss', loss.item(), iteration)
@@ -365,6 +379,10 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
             tb_writer.add_scalar(f'{stage}/motion_mask/static_fraction_le_0_5', motion_mask_stats["static_fraction"], iteration)
         if motion_mask_loss is not None:
             tb_writer.add_scalar(f'{stage}/motion_mask/regularizer_mean', motion_mask_loss.item(), iteration)
+        if motion_bin_loss is not None:
+            tb_writer.add_scalar(f'{stage}/motion_mask/binarization_loss', motion_bin_loss.item(), iteration)
+        if static_deform_loss is not None:
+            tb_writer.add_scalar(f'{stage}/motion_mask/static_deformation_loss', static_deform_loss.item(), iteration)
         
     
     # Report test and samples of training set

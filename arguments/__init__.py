@@ -111,6 +111,8 @@ class ModelHiddenParams(ParamGroup):
         self.motion_separation=False # enable lightweight static/dynamic motion gate
         self.motion_mask_lambda=0.0 # optional sparsity regularizer weight for the motion gate
         self.motion_gate_rot_scale=False # optionally gate scale and rotation deltas too
+        self.static_deform_lambda=0.0 # penalize deformation in low-motion-mask regions
+        self.motion_bin_lambda=0.0 # encourage motion mask values toward 0 or 1
 
         
         super().__init__(parser, "ModelHiddenParams")
