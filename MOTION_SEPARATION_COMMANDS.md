@@ -161,37 +161,69 @@ python -c "import open3d as o3d; p=o3d.io.read_point_cloud('output/dnerf/bouncin
 ### HyperNeRF chickchicken baseline train
 
 ```bash
-python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_baseline --port 6031 --expname "hypernerf/interp/chickchicken_baseline" --configs arguments/hypernerf/default.py
+python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_baseline_bs1 --port 6031 --expname "hypernerf/interp/chickchicken_baseline_bs1" --configs arguments/hypernerf/default.py --batch-size 1 --densify-until-iter 6000
 ```
 
 ### HyperNeRF chickchicken baseline render
 
 ```bash
-python render.py --model_path output/hypernerf/interp/chickchicken_baseline --skip_train --configs arguments/hypernerf/default.py
+python render.py --model_path output/hypernerf/interp/chickchicken_baseline_bs1 --skip_train --configs arguments/hypernerf/default.py
 ```
 
 ### HyperNeRF chickchicken motion train (`static=2e-3`, `bin=1e-3`)
 
 ```bash
-python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3 --port 6032 --expname "hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3" --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.002 --motion-bin-lambda 0.001
+python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1 --port 6032 --expname "hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1" --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.002 --motion-bin-lambda 0.001 --batch-size 1 --densify-until-iter 6000
 ```
 
 ### HyperNeRF chickchicken motion render (`static=2e-3`, `bin=1e-3`)
 
 ```bash
-python render.py --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3 --skip_train --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale
+python render.py --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1 --skip_train --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale
 ```
 
 ### HyperNeRF chickchicken metrics compare
 
 ```bash
-python metrics.py -m output/hypernerf/interp/chickchicken_baseline output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3
+python metrics.py -m output/hypernerf/interp/chickchicken_baseline_bs1 output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1
 ```
 
 ### HyperNeRF chickchicken motion mask stats
 
 ```bash
-tail -n 10 output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3/motion_mask_stats.jsonl
+tail -n 10 output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1/motion_mask_stats.jsonl
+```
+
+## Custom M200
+
+### Custom M200 generate D-NeRF-style transforms from transforms.json
+
+```bash
+python scripts/make_dnerf_transforms.py data/custom/M200 --time-step 0.5 --zero-base --hold 8
+```
+
+### Custom M200 baseline train
+
+```bash
+python train.py -s data/custom/M200 --model_path output/custom/M200_baseline --port 6017 --expname "custom/M200_baseline" --configs arguments/dnerf/M200.py
+```
+
+### Custom M200 baseline render
+
+```bash
+python render.py --model_path output/custom/M200_baseline --skip_train --configs arguments/dnerf/M200.py
+```
+
+### Custom M200 baseline render without video
+
+```bash
+python render.py --model_path output/custom/M200_baseline --skip_train --skip_video --configs arguments/dnerf/M200.py
+```
+
+### Custom M200 baseline metrics
+
+```bash
+python metrics.py -m output/custom/M200_baseline
 ```
 
 ## Suggested Order
