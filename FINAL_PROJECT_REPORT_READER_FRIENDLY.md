@@ -2,190 +2,121 @@
 
 ## Reader's Guide
 
-This report is written for a reader who knows the high-level idea of 3D reconstruction but may not know the details of this codebase. The report first explains the original 4DGS pipeline, then identifies the exact location where the motion mask was added.
+This report is written for a reader who may not know the details of 4D Gaussian Splatting or this codebase. It first explains the original 4DGS pipeline in plain language, then shows exactly where the motion mask was inserted, and finally summarizes the experiments.
 
-The key implementation files are:
+One important clarification:
 
-- `gaussian_renderer/__init__.py`: calls the deformation network during rendering.
-- `scene/deformation.py`: defines the HexPlane feature query, deformation heads, and the added motion-mask head.
-- `scene/gaussian_model.py`: stores Gaussian parameters and exposes mask losses/statistics.
-- `train.py`: computes image loss and optional motion-mask regularizers.
-- `arguments/__init__.py`: defines command-line flags.
+- there was an **early prototype** that used a sparsity-style mask loss,
+- but that sparsity term turned out not to be useful,
+- so the **final method** in this project is the regularized version with **binarization loss** and **static-deformation loss**.
+
+This distinction matters for understanding the final results.
 
 ## 1. Introduction
 
-### 1.1 From 3D Reconstruction to 4D Reconstruction
+### 1.1 Static 3D Reconstruction vs Dynamic 4D Reconstruction
 
-Static 3D reconstruction tries to recover a scene geometry and appearance from multiple images. A static method assumes that the scene does not change while cameras move around it.
+Static 3D reconstruction tries to recover scene geometry and appearance from images under the assumption that the scene does not change.
 
-Dynamic reconstruction is harder. The scene now changes with time, so the representation must explain both:
+Dynamic reconstruction is harder because the scene changes over time. A useful dynamic representation must explain:
 
-1. the 3D structure of the scene, and
-2. how that structure moves or deforms over time.
+1. what the scene looks like in 3D, and
+2. how parts of the scene move over time.
 
-This is often called **4D reconstruction**, where the fourth dimension is time.
+This is why dynamic scene reconstruction is often called **4D reconstruction**: 3D space plus time.
 
 ### 1.2 NeRF, 3DGS, and 4DGS
 
-NeRF represents a scene as a neural field. Given a 3D point and viewing direction, the network predicts density and color. Rendering is done by sampling many points along camera rays.
+NeRF represents a scene as a neural function and renders it by integrating samples along rays. It is flexible but can be slow.
 
-3D Gaussian Splatting (3DGS) replaces dense ray sampling with an explicit set of anisotropic Gaussian ellipsoids. Each Gaussian has parameters such as position, scale, rotation, opacity, and color features. Rendering projects these Gaussians into the image plane and alpha-composites them.
+3D Gaussian Splatting (3DGS) uses explicit Gaussian ellipsoids instead of dense volume samples. Each Gaussian has:
 
-4D Gaussian Splatting (4DGS) extends 3DGS to dynamic scenes. It keeps Gaussians in a canonical space and uses a deformation network to map them to time-dependent Gaussians before rendering.
+- a 3D position,
+- a scale,
+- a rotation,
+- an opacity,
+- color features.
 
-In simplified notation:
+Rendering is done by projecting the Gaussians into the image plane and splatting them.
 
-$$
-G_i^0 = (\mu_i^0, s_i^0, r_i^0, \alpha_i, c_i)
-$$
-
-is the canonical Gaussian at index $i$, where:
-
-- $\mu_i^0 \in \mathbb{R}^3$: canonical 3D position.
-- $s_i^0 \in \mathbb{R}^3$: canonical scale.
-- $r_i^0 \in \mathbb{R}^4$: canonical rotation quaternion.
-- $\alpha_i$: opacity.
-- $c_i$: spherical harmonics color features.
-
-At time $t$, 4DGS predicts deformation deltas:
-
-$$
-\Delta \mu_i(t), \quad \Delta s_i(t), \quad \Delta r_i(t).
-$$
-
-The deformed Gaussian is then rendered:
-
-$$
-\mu_i(t) = \mu_i^0 + \Delta \mu_i(t).
-$$
+4D Gaussian Splatting (4DGS) extends this idea to dynamic scenes. It stores Gaussians in a **canonical space** and uses a deformation network to move them over time.
 
 ### 1.3 Motivation
 
-Original 4DGS can reconstruct dynamic scenes, but it does not explicitly say which Gaussians are static and which are dynamic. The deformation network may move many Gaussians in order to minimize image reconstruction loss, even if only part of the scene actually moves.
+Original 4DGS can reconstruct dynamic scenes well, but it does not explicitly tell us which Gaussians are static and which are dynamic. The deformation network can move Gaussians as needed to reduce image loss, even if some of those Gaussians ideally should remain static.
 
-The goal of this project is to add a **motion-aware mask** into the 4DGS deformation pipeline. This mask is intended to indicate how much each Gaussian participates in time-dependent deformation.
+The goal of this project is therefore:
 
-### 1.4 Initial Segmentation-Based Attempt
+> add a motion-aware signal to the 4DGS deformation pipeline so that the model knows how strongly each Gaussian should participate in time-dependent deformation.
 
-An earlier direction considered using GroundingDINO and SAM2 masks with an Instant-NGP-style 3D reconstruction pipeline. That direction was not used as the final method because:
+### 1.4 Initial Segmentation-Based Direction
 
-- it depends on external segmentation quality,
-- masks can be inconsistent across time,
-- prompts may not correspond to actual motion,
-- segmentation is not integrated into differentiable 4DGS training,
-- it is object-aware but not necessarily motion-aware.
+At first, a different idea was considered: using GroundingDINO + SAM2 masks with an Instant-NGP-style 3D reconstruction pipeline.
 
-The final method instead learns a latent motion response directly inside the 4DGS deformation network.
+That direction was not chosen as the final project method because:
+
+- it depends on external segmentation,
+- segmentation masks may be inconsistent across time,
+- semantic masks are not necessarily motion-aware,
+- the segmentation stage is outside end-to-end 4DGS training.
+
+The final method instead learns a latent motion coefficient directly inside the 4DGS deformation network.
 
 ## 2. Variable Glossary
 
-This table defines the main variables used in this report.
+To make the equations easier to read, here is a glossary.
 
 | Symbol | Code variable | Meaning |
 |---|---|---|
 | $i$ | point index | Gaussian index |
-| $t$ | `time`, `times_sel`, `time_emb` | normalized timestamp for the current camera/view |
-| $\mu_i^0$ or $x_i^0$ | `pc.get_xyz`, `means3D`, `rays_pts_emb[:, :3]` | canonical Gaussian position |
-| $s_i^0$ | `pc._scaling`, `scales_emb[:, :3]` | canonical Gaussian scale parameter |
-| $r_i^0$ | `pc._rotation`, `rotations_emb[:, :4]` | canonical Gaussian rotation parameter |
-| $\Delta x_i(t)$ | `dx` | predicted position deformation |
-| $\Delta s_i(t)$ | `ds` | predicted scale deformation |
-| $\Delta r_i(t)$ | `dr` | predicted rotation deformation |
-| $F_i(t)$ | `grid_feature` | HexPlane spatiotemporal feature queried at $(x_i^0,t)$ |
-| $h_i(t)$ | `hidden` | shared deformation feature after `feature_out` |
-| $m_i(t)$ | `motion_mask` | predicted scalar soft motion mask in $[0,1]$ |
+| $t$ | `time`, `times_sel`, `time_emb` | timestamp for the current frame/view |
+| $x_i^0$ or $\mu_i^0$ | `pc.get_xyz`, `means3D`, `rays_pts_emb[:, :3]` | canonical Gaussian position |
+| $s_i^0$ | `pc._scaling`, `scales_emb[:, :3]` | canonical Gaussian scale |
+| $r_i^0$ | `pc._rotation`, `rotations_emb[:, :4]` | canonical Gaussian rotation |
+| $\Delta x_i(t)$ | `dx` | position deformation predicted by the network |
+| $\Delta s_i(t)$ | `ds` | scale deformation predicted by the network |
+| $\Delta r_i(t)$ | `dr` | rotation deformation predicted by the network |
+| $F_i(t)$ | `grid_feature` | HexPlane spatiotemporal feature queried at Gaussian $i$ and time $t$ |
+| $h_i(t)$ | `hidden` | shared feature after `feature_out` |
+| $m_i(t)$ | `motion_mask` | predicted scalar soft motion mask |
 | $\hat{I}$ | `image_tensor` | rendered image |
-| $I$ | `gt_image_tensor` | ground-truth training image |
+| $I$ | `gt_image_tensor` | ground-truth image |
 
-The most important variable is:
-
-$$
-m_i(t) = \sigma(g_\phi(h_i(t))),
-$$
-
-where:
-
-- $\sigma$ is sigmoid,
-- $g_\phi$ is the new motion-mask MLP head,
-- $h_i(t)$ is the shared feature produced by the original deformation network.
-
-## 3. Related Work
-
-### 3.1 Original 4D Gaussian Splatting
-
-Original 4DGS represents dynamics using a deformation field. Instead of storing a separate Gaussian cloud for every frame, it stores canonical Gaussians and predicts how they deform at time $t$.
-
-This codebase implements that idea using:
-
-1. a HexPlane feature field,
-2. a shared feature projection MLP called `feature_out`,
-3. separate deformation heads for position, scale, rotation, opacity, and SH features,
-4. a differentiable Gaussian rasterizer.
-
-The dynamic behavior is implicit: the model predicts deformation deltas but does not produce an explicit static/dynamic label.
-
-### 3.2 SDD-4DGS
-
-SDD-4DGS proposes a static-dynamic decoupling framework. Based on the paper title, public summary, and the provided excerpt, SDD introduces a dynamic perception coefficient associated with Gaussian ellipsoids. Conceptually, that coefficient gates time-dependent deformation:
+The most important new variable is:
 
 $$
-\mu'_t = \mu_0 + w \Delta \mu_t.
+m_i(t) = \sigma(g_\phi(h_i(t))).
 $$
 
-It further treats the coefficient probabilistically and encourages Gaussians to take either a static or dynamic state.
+This means:
 
-Our method is related to this idea, but it is not a reproduction of SDD-4DGS. The main difference is:
+- compute a shared deformation feature $h_i(t)$,
+- pass it into a new mask head $g_\phi$,
+- apply sigmoid to get a number in $[0,1]$.
 
-- SDD: coefficient is described as a per-Gaussian dynamic coefficient.
-- Ours: coefficient is predicted by a network head from the deformation feature.
+## 3. What Original 4DGS Does in This Codebase
 
-Thus our mask is a soft motion response:
+This section explains the original 4DGS pipeline before our modification.
 
-$$
-m_i(t) = \sigma(g_\phi(h_i(t))),
-$$
+### 3.1 Gaussian Parameters
 
-not a stored per-Gaussian Bernoulli parameter.
+In `scene/gaussian_model.py`, each Gaussian stores:
 
-### 3.3 Mask-Based and Segmentation-Based Methods
-
-Mask-based NeRF or 3D reconstruction methods often use external segmentation masks. Those masks can separate objects, but they require external supervision and may not be temporally consistent.
-
-Our method does not use GroundingDINO, SAM2, optical flow labels, or ground-truth dynamic masks during training. It learns a latent mask from reconstruction and regularization.
-
-## 4. Original 4DGS Pipeline in This Codebase
-
-This section explains the original pipeline before our modification.
-
-### 4.1 Gaussian Parameters
-
-In `scene/gaussian_model.py`, each Gaussian has learnable parameters:
-
-- `_xyz`: canonical 3D position,
+- `_xyz`: canonical position,
 - `_scaling`: scale,
 - `_rotation`: rotation,
 - `_opacity`: opacity,
-- `_features_dc`, `_features_rest`: spherical harmonics color features,
+- `_features_dc`, `_features_rest`: color features,
 - `_deformation`: deformation network.
 
-During rendering, `gaussian_renderer/__init__.py` first reads these canonical parameters:
+### 3.2 Coarse Stage and Fine Stage
 
-```python
-means3D = pc.get_xyz
-opacity = pc._opacity
-shs = pc.get_features
-scales = pc._scaling
-rotations = pc._rotation
-```
+During rendering, there are two stages:
 
-### 4.2 Coarse Stage vs Fine Stage
+1. **Coarse stage**: render canonical Gaussians directly.
+2. **Fine stage**: deform the Gaussians using the deformation network, then render them.
 
-The renderer has two stages:
-
-1. **Coarse stage:** render canonical Gaussians directly.
-2. **Fine stage:** send Gaussians through the deformation network before rendering.
-
-In code:
+In `gaussian_renderer/__init__.py`:
 
 ```python
 if "coarse" in stage:
@@ -196,189 +127,122 @@ elif "fine" in stage:
     )
 ```
 
-So the motion model is used in the fine stage.
+So all dynamic behavior happens in the fine stage.
 
-### 4.3 The Deformation Network
+### 3.3 HexPlane Feature Query
 
-The deformation network is defined in `scene/deformation.py`.
-
-The wrapper class is:
-
-```python
-class deform_network(nn.Module):
-```
-
-It calls:
-
-```python
-self.deformation_net = Deformation(...)
-```
-
-The actual deformation logic is inside:
-
-```python
-class Deformation(nn.Module):
-```
-
-### 4.4 HexPlane Feature Query
-
-For each Gaussian and timestamp, the network queries a HexPlane feature field:
+The deformation network in `scene/deformation.py` first queries a HexPlane field:
 
 ```python
 grid_feature = self.grid(rays_pts_emb[:, :3], time_emb[:, :1])
 ```
 
-This returns a spatiotemporal feature:
+This gives a spatiotemporal feature:
 
 $$
-F_i(t) = \operatorname{HexPlane}(x_i^0,t).
+F_i(t) = \text{HexPlane}(x_i^0, t).
 $$
 
-For the D-NeRF configuration used here:
+### 3.4 What Exactly Is `hidden`?
 
-- `multires = [1, 2]`,
-- `output_coordinate_dim = 32`,
-- features are concatenated across the two resolutions,
-- so the printed feature dimension is 64.
+This is one of the most important implementation details.
 
-Thus, in typical D-NeRF runs:
-
-$$
-F_i(t) \in \mathbb{R}^{64}.
-$$
-
-### 4.5 What Exactly Is `hidden`?
-
-In the report formula:
-
-$$
-h_i(t) = \operatorname{feature\_out}(F_i(t)).
-$$
-
-This is exactly the variable named `hidden` in `scene/deformation.py`:
+After querying the HexPlane feature, the code computes:
 
 ```python
 hidden = torch.cat([grid_feature], -1)
 hidden = self.feature_out(hidden)
 ```
 
-The module `feature_out` is built in `Deformation.create_net()`:
+This `hidden` variable is the **shared deformation feature** used by all later heads. It is not a Transformer feature. It is the output of `feature_out`, which is defined in `Deformation.create_net()`.
 
-```python
-self.feature_out = [nn.Linear(grid_out_dim, self.W)]
-for i in range(self.D - 1):
-    self.feature_out.append(nn.ReLU())
-    self.feature_out.append(nn.Linear(self.W, self.W))
-self.feature_out = nn.Sequential(*self.feature_out)
-```
-
-In the D-NeRF default config:
+For the D-NeRF experiments in this project, the configuration is:
 
 ```python
 defor_depth = 0
 net_width = 64
 ```
 
-Therefore, for the runs discussed here, `feature_out` is effectively a single linear projection from the HexPlane feature dimension to a 64-dimensional shared feature. There are no extra trunk hidden layers added by the `for i in range(self.D - 1)` loop under this configuration.
-
-This means:
+That means `feature_out` is essentially just one linear layer from the HexPlane feature dimension to 64 dimensions. So:
 
 $$
 h_i(t) \in \mathbb{R}^{64}.
 $$
 
-It is not a Transformer feature. It is the shared deformation feature produced after HexPlane feature lookup and `feature_out`.
+This is exactly the feature from which both the deformation heads and the new motion-mask head are predicted.
 
-### 4.6 Original Deformation Heads
+### 3.5 Original Deformation Heads
 
-After computing `hidden`, original 4DGS predicts separate deformation outputs:
+The original code predicts deformation deltas using separate MLP heads:
 
 ```python
 dx = self.pos_deform(hidden)
 ds = self.scales_deform(hidden)
 dr = self.rotations_deform(hidden)
-do = self.opacity_deform(hidden)
-dshs = self.shs_deform(hidden)
 ```
 
-The heads are small MLPs. For example, the position head is:
-
-```python
-self.pos_deform = nn.Sequential(
-    nn.ReLU(),
-    nn.Linear(self.W, self.W),
-    nn.ReLU(),
-    nn.Linear(self.W, 3)
-)
-```
-
-So the baseline fine-stage position update is:
+So in simplified notation, original 4DGS does:
 
 $$
-x_i(t) = x_i^0 + \Delta x_i(t).
+x_i(t) = x_i^0 + \Delta x_i(t),
 $$
 
-In code, without motion separation:
-
-```python
-pts = rays_pts_emb[:, :3] * mask + dx
-```
-
-In the common configuration, `mask` is a legacy mask that becomes all ones unless `static_mlp` or `empty_voxel` is enabled. Therefore this is effectively:
-
 $$
-x_i(t) = x_i^0 + \Delta x_i(t).
+s_i(t) = s_i^0 + \Delta s_i(t),
 $$
 
-### 4.7 Original 4DGS Diagram
+$$
+r_i(t) = r_i^0 + \Delta r_i(t).
+$$
+
+### 3.6 Original 4DGS Diagram
 
 ```mermaid
 flowchart LR
-    A["Canonical Gaussians<br/>x, scale, rotation, opacity, SH"] --> B["Camera time t"]
-    A --> C["HexPlane query<br/>F_i(t)=HexPlane(x_i,t)"]
-    B --> C
+    A["Canonical Gaussians<br/>x, scale, rotation, opacity, SH"] --> C["HexPlane query<br/>F_i(t)=HexPlane(x_i,t)"]
+    B["Time t"] --> C
     C --> D["feature_out<br/>shared feature h_i(t)"]
     D --> E1["pos_deform MLP<br/>Δx"]
     D --> E2["scales_deform MLP<br/>Δs"]
     D --> E3["rotations_deform MLP<br/>Δr"]
-    D --> E4["opacity / SH heads<br/>optional"]
-    E1 --> F["Deformed Gaussians<br/>x+Δx, s+Δs, r+Δr"]
+    E1 --> F["Deformed Gaussians"]
     E2 --> F
     E3 --> F
-    E4 --> F
     F --> G["Gaussian rasterizer"]
     G --> H["Rendered image"]
     H --> I["Image reconstruction loss"]
 ```
 
-## 5. Our Motion-Mask Modification
+## 4. What We Added
 
-### 5.1 Where We Add the New Component
+### 4.1 Exact Insertion Point
 
-We add the motion mask **after** the shared deformation feature `hidden` is computed and **before** deformation deltas are applied.
+We add the motion mask **after `hidden` is computed** and **before deformation is applied**.
 
-In `scene/deformation.py`, the original pipeline already has:
+In `scene/deformation.py`, the key lines are:
 
 ```python
 hidden = self.query_time(...)
-dx = self.pos_deform(hidden)
-```
-
-We insert:
-
-```python
 motion_mask = torch.sigmoid(self.motion_mask_deform(hidden))
+dx = self.pos_deform(hidden)
+pts = rays_pts_emb[:, :3] + motion_mask * dx
 ```
 
-The new mask head is created only when:
+So the main change is:
 
-```bash
---motion-separation
-```
+Original:
 
-is enabled.
+$$
+x_i(t) = x_i^0 + \Delta x_i(t)
+$$
 
-### 5.2 Motion-Mask Head
+Modified:
+
+$$
+x_i(t) = x_i^0 + m_i(t)\Delta x_i(t)
+$$
+
+### 4.2 The New Motion-Mask Head
 
 The new head is:
 
@@ -391,7 +255,7 @@ self.motion_mask_deform = nn.Sequential(
 )
 ```
 
-It takes the same `hidden` feature as the deformation heads and outputs one scalar logit. Sigmoid maps this logit to a soft mask:
+It takes `hidden` as input and outputs one scalar logit. Sigmoid converts it to a soft mask:
 
 $$
 m_i(t) \in [0,1].
@@ -399,50 +263,18 @@ $$
 
 Interpretation:
 
-- $m_i(t) \approx 0$: Gaussian is treated as mostly static for this forward pass.
-- $m_i(t) \approx 1$: Gaussian is allowed to fully participate in deformation.
-- middle values: soft participation.
+- small $m_i(t)$: this Gaussian should deform less,
+- large $m_i(t)$: this Gaussian can deform more.
 
-It is important that this is **not** a ground-truth binary label.
+### 4.3 Optional Scale/Rotation Gating
 
-### 5.3 How the Mask Changes the Deformation
-
-Original position update:
-
-$$
-x_i(t) = x_i^0 + \Delta x_i(t).
-$$
-
-Our masked update:
-
-$$
-x_i(t) = x_i^0 + m_i(t)\Delta x_i(t).
-$$
-
-In code:
-
-```python
-if self.args.motion_separation:
-    pts = rays_pts_emb[:, :3] + motion_mask * dx
-```
-
-So the exact insertion point is the multiplication:
-
-```python
-motion_mask * dx
-```
-
-This is the main change.
-
-### 5.4 Optional Scale and Rotation Gating
-
-Originally, our first motion-separation version only gated position. Later, we added the flag:
+By default, the mask gates only position. If the user enables:
 
 ```bash
 --motion-gate-rot-scale
 ```
 
-When this flag is enabled:
+then scale and rotation are also gated:
 
 $$
 s_i(t) = s_i^0 + m_i(t)\Delta s_i(t),
@@ -452,346 +284,194 @@ $$
 r_i(t) = r_i^0 + m_i(t)\Delta r_i(t).
 $$
 
-In code:
+This is implemented in the `if self.args.motion_separation and self.args.motion_gate_rot_scale` branches in `scene/deformation.py`.
 
-```python
-if self.args.motion_separation and self.args.motion_gate_rot_scale:
-    scales = scales_emb[:, :3] + motion_mask * ds
-```
-
-and:
-
-```python
-if self.args.motion_separation and self.args.motion_gate_rot_scale:
-    rotations = rotations_emb[:, :4] + motion_mask * dr
-```
-
-Without this flag, scale and rotation can still deform without the motion mask. This is why the fixed experiments use `--motion-gate-rot-scale`.
-
-### 5.5 What the Mask Does Not Do
-
-The motion mask does **not**:
-
-- directly gate opacity,
-- directly gate color,
-- use GroundingDINO or SAM2,
-- use ground-truth static/dynamic labels,
-- create separate static and dynamic Gaussian sets during training,
-- become a hard binary variable during forward rendering.
-
-It is a soft deformation gate.
-
-### 5.6 Our Modified 4DGS Diagram
+### 4.4 Our Modified 4DGS Diagram
 
 ```mermaid
 flowchart LR
-    A["Canonical Gaussians<br/>x, scale, rotation, opacity, SH"] --> B["Camera time t"]
-    A --> C["HexPlane query<br/>F_i(t)=HexPlane(x_i,t)"]
-    B --> C
+    A["Canonical Gaussians<br/>x, scale, rotation, opacity, SH"] --> C["HexPlane query<br/>F_i(t)=HexPlane(x_i,t)"]
+    B["Time t"] --> C
     C --> D["feature_out<br/>shared feature h_i(t)"]
     D --> E1["pos_deform MLP<br/>Δx"]
     D --> E2["scales_deform MLP<br/>Δs"]
     D --> E3["rotations_deform MLP<br/>Δr"]
     D --> M["NEW: motion_mask_deform MLP<br/>m=sigmoid(g(h))"]
-    M --> G1["Gate position<br/>x+mΔx"]
-    E1 --> G1
-    M --> G2["Optional gate scale/rotation<br/>s+mΔs, r+mΔr"]
-    E2 --> G2
-    E3 --> G2
+    E1 --> G1["Position update<br/>x + mΔx"]
+    M --> G1
+    E2 --> G2["Optional scale update<br/>s + mΔs"]
+    M --> G2
+    E3 --> G3["Optional rotation update<br/>r + mΔr"]
+    M --> G3
     G1 --> F["Deformed Gaussians"]
     G2 --> F
+    G3 --> F
     F --> R["Gaussian rasterizer"]
     R --> O["Rendered image"]
     O --> L1["Image reconstruction loss"]
-    M --> L2["Mask losses<br/>mean(m), m(1-m)"]
-    M --> L3["Static deformation loss<br/>(1-m)||Δx||"]
-    E1 --> L3
+    M --> L2["Binarization loss<br/>m(1-m)"]
+    E1 --> L3["Static-deformation loss<br/>(1-m)||Δx||"]
+    M --> L3
 ```
 
-## 6. Losses
+## 5. Early Prototype vs Final Method
 
-### 6.1 Original Reconstruction Loss
+This distinction is important.
 
-The training loop in `train.py` computes:
+### 5.1 Early Prototype
 
-```python
-Ll1 = l1_loss(image_tensor, gt_image_tensor[:, :3, :, :])
-loss = Ll1
-```
-
-In math:
+The earliest motion-mask attempt used a sparsity-style loss:
 
 $$
-\mathcal{L}_{\text{img}} = \|\hat{I} - I\|_1.
+\mathcal{L}_{\text{sparse}} = \operatorname{mean}(m).
 $$
 
-During the fine stage, the original 4DGS grid regularization is also added:
-
-```python
-tv_loss = gaussians.compute_regulation(...)
-loss += tv_loss
-```
-
-### 6.2 Original Motion-Mask Sparsity Loss
-
-The first motion-mask version added:
-
-$$
-\mathcal{L}_{\text{mask}} = \operatorname{mean}(m).
-$$
-
-In code:
-
-```python
-return motion_mask.mean()
-```
-
-This is controlled by:
+This was controlled by:
 
 ```bash
 --motion-mask-lambda
 ```
 
-This loss encourages the model to make masks smaller. By itself, it can cause an all-static collapse.
+This loss encouraged masks to become small, but in practice it often pushed the model toward all-static collapse. It was therefore **not retained as part of the final method**.
 
-### 6.3 Binarization Loss
+### 5.2 Final Method
 
-We later added:
-
-$$
-\mathcal{L}_{\text{bin}} = \operatorname{mean}(m(1-m)).
-$$
-
-This term is large near $m=0.5$ and small near $m=0$ or $m=1$. It encourages the mask to move away from uncertain middle values.
-
-It is controlled by:
+The final method used in the main experiments sets:
 
 ```bash
---motion-bin-lambda
+--motion-mask-lambda 0
 ```
 
-Important limitation: this term does not know whether the correct answer is 0 or 1. It only encourages confidence.
+and instead uses:
 
-### 6.4 Static-Deformation Loss
-
-We also added:
+1. **Binarization loss**
 
 $$
-\mathcal{L}_{\text{static-def}} =
-\operatorname{mean}\big((1-m)\|\Delta x\|_2\big).
+\mathcal{L}_{\text{bin}} = \operatorname{mean}(m(1-m))
 $$
 
-The idea is:
-
-- if $m$ is low, the Gaussian claims to be static,
-- then its displacement $\Delta x$ should be small,
-- otherwise the model is hiding motion behind a low mask.
-
-This term is controlled by:
-
-```bash
---static-deform-lambda
-```
-
-This loss directly addresses the ambiguity:
+2. **Static-deformation loss**
 
 $$
-m\Delta x \approx (0.2)(5\Delta x).
+\mathcal{L}_{\text{static-def}} = \operatorname{mean}((1-m)\|\Delta x\|_2)
 $$
 
-Without additional constraints, a low mask and a large displacement can produce the same final position as a high mask and a small displacement.
-
-### 6.5 Full Implemented Objective
-
-The implemented objective is:
+So the final objective used in the main experiments is:
 
 $$
-\mathcal{L}
+\mathcal{L}_{\text{final}}
 =
 \mathcal{L}_{\text{img}}
 + \mathcal{L}_{\text{grid}}
-+ \lambda_{\text{mask}}\mathcal{L}_{\text{mask}}
 + \lambda_{\text{bin}}\mathcal{L}_{\text{bin}}
 + \lambda_{\text{static}}\mathcal{L}_{\text{static-def}}.
 $$
 
-The last three terms are optional and are active only when their weights are nonzero.
+## 6. Experiments
 
-## 7. Experiments
+### 6.1 Main Experimental Scenes
 
-### 7.1 Dataset and Setup
+The main scenes used to evaluate the **final method** are:
 
-The experiments discussed here use D-NeRF scenes:
-
-- Lego
 - Bouncingballs
+- Jumpingjacks
 
-The D-NeRF configs are in `arguments/dnerf/`.
+Lego was only used in early pilot experiments before the final regularized formulation was established.
 
-The default D-NeRF training setup includes:
+### 6.2 Early Pilot Observation on Lego
 
-- `iterations = 20000`,
-- `coarse_iterations = 3000`,
-- `net_width = 64`,
-- `defor_depth = 0`,
-- `multires = [1, 2]`.
+The early prototype did not show meaningful gains on Lego. Since Lego contains only a small and slow moving region, it was not a strong scene for validating the final regularized motion-mask method. Therefore, Lego is not used as the main result scene in this report.
 
-The renderer evaluates:
+### 6.3 Bouncingballs Results
 
-- PSNR,
-- SSIM,
-- LPIPS-vgg,
-- LPIPS-alex,
-- MS-SSIM,
-- D-SSIM.
-
-### 7.2 Lego Results
-
-Verified Lego metrics:
-
-| Method | SSIM ↑ | PSNR ↑ | LPIPS-vgg ↓ | LPIPS-alex ↓ | MS-SSIM ↑ | D-SSIM ↓ |
-|---|---:|---:|---:|---:|---:|---:|
-| Baseline | 0.9376 | 25.0273 | 0.0563 | 0.0381 | 0.9533 | 0.0234 |
-| Motion, $\lambda_{\text{mask}}=0.001$ | 0.9367 | 25.0465 | 0.0590 | 0.0406 | 0.9531 | 0.0235 |
-| Motion, no sparsity | 0.9367 | 25.0325 | 0.0584 | 0.0398 | 0.9532 | 0.0234 |
-
-Interpretation:
-
-- Lego does not show meaningful reconstruction improvement from the motion mask.
-- The moving part in Lego is small and slow, so the reconstruction loss may not strongly require a clean motion mask.
-- The mask can collapse or remain weak because most of the scene is effectively static.
-
-### 7.3 Bouncingballs Results
-
-Verified Bouncingballs reconstruction metrics:
+Verified reconstruction metrics:
 
 | Method | SSIM ↑ | PSNR ↑ | LPIPS-vgg ↓ | LPIPS-alex ↓ | MS-SSIM ↑ | D-SSIM ↓ |
 |---|---:|---:|---:|---:|---:|---:|
 | Baseline | 0.9942868 | 40.6763 | 0.0153625 | 0.0060306 | 0.9953953 | 0.0023024 |
-| Regularized motion, $\lambda_{\text{static}}=10^{-3}$, $\lambda_{\text{bin}}=10^{-3}$ | **0.9945415** | **40.8666** | **0.0143814** | **0.0056324** | **0.9955825** | **0.0022088** |
-| Regularized motion, $\lambda_{\text{static}}=10^{-2}$, $\lambda_{\text{bin}}=10^{-3}$ | 0.9942789 | 40.7233 | 0.0155924 | 0.0059685 | 0.9953101 | 0.0023450 |
-
-The $10^{-3}$ static-deformation setting slightly improves all reported reconstruction metrics over baseline. The improvement is modest, not a large breakthrough, but it is consistent across the metrics.
-
-Mask diagnostics at iteration 20000:
-
-| Method | mean | std | dynamic fraction $m>0.5$ | fraction $m>0.4$ | Qualitative PLY |
-|---|---:|---:|---:|---:|---|
-| Motion no sparsity | 0.2475 | 0.0641 | 0.0001 | not logged | nearly uniform soft mask |
-| Regularized $\lambda_{\text{static}}=10^{-3}$ | 0.1851 | 0.1904 | 0.0117 | 0.2162 | bouncing balls contain purple regions |
-| Regularized $\lambda_{\text{static}}=10^{-2}$ | 0.9986 | 0.0022 | 1.0000 | 1.0000 | almost entirely red |
+| Final regularized method (`static=1e-3`, `bin=1e-3`) | **0.9945415** | **40.8666** | **0.0143814** | **0.0056324** | **0.9955825** | **0.0022088** |
+| Over-regularized variant (`static=1e-2`, `bin=1e-3`) | 0.9942789 | 40.7233 | 0.0155924 | 0.0059685 | 0.9953101 | 0.0023450 |
 
 Interpretation:
 
-- The no-sparsity mask is soft but not well separated.
-- The $10^{-3}$ regularized mask has a wider distribution and visibly responds to moving balls.
-- The $10^{-2}$ regularized mask collapses to all dynamic.
-- Similar render quality does not imply similar motion separation quality.
+- The final regularized method improves all reconstruction metrics over baseline.
+- The improvement is modest, but it is consistent.
+- Too strong a static-deformation loss causes a worse mask and slightly worse reconstruction.
 
-## 8. Discussion
+Mask diagnostics:
 
-### 8.1 What the Motion Mask Helps With
+| Method | mean | std | dynamic fraction | fraction > 0.4 | Qualitative mask |
+|---|---:|---:|---:|---:|---|
+| Early no-sparsity mask | 0.2475 | 0.0641 | 0.0001 | not logged | nearly uniform soft mask |
+| Final regularized method | 0.1851 | 0.1904 | 0.0117 | 0.2162 | moving balls show purple regions |
+| Over-regularized variant | 0.9986 | 0.0022 | 1.0000 | 1.0000 | all red / all dynamic |
 
-The motion mask is useful mainly for interpretability and motion localization. On Bouncingballs, the $10^{-3}$ regularized version produces visible soft activation around the moving balls. This suggests that the model learned a motion-aware signal, even though the mask is not perfectly binary.
+This shows that the final method gives a more structured soft mask than the early prototype.
 
-The mask can support:
+### 6.4 Jumpingjacks Results
 
-- motion saliency visualization,
-- identifying regions that participate in deformation,
-- future static/dynamic Gaussian filtering,
-- better regularization of dynamic reconstruction.
+Verified reconstruction metrics:
 
-### 8.2 What It Does Not Solve Yet
+| Method | SSIM ↑ | PSNR ↑ | LPIPS-vgg ↓ | LPIPS-alex ↓ | MS-SSIM ↑ | D-SSIM ↓ |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline | 0.9855952 | 35.4000 | 0.0199500 | 0.0126626 | 0.9936216 | 0.0031892 |
+| Final regularized method (`static=1e-3`, `bin=1e-3`) | **0.9863845** | **35.5784** | **0.0189655** | **0.0123328** | **0.9940146** | **0.0029927** |
 
-The current method does not solve full object-level static/dynamic segmentation. It does not produce a clean binary mask in all cases. It can collapse:
+Interpretation:
 
-- to all static when $\operatorname{mean}(m)$ is too strong,
-- to all dynamic when $\lambda_{\text{static}}$ is too strong,
-- to a soft ambiguous distribution when regularization is weak.
+- On Jumpingjacks, the same final regularized method again improves all reported reconstruction metrics.
+- This suggests that the method is more helpful on scenes with stronger motion.
 
-### 8.3 Why Render Quality Is Not Enough
+## 7. Discussion
 
-Two models can render nearly identical images while learning completely different masks. This happens because the renderer only sees the final deformed Gaussians. It does not care whether the deformation came from:
+### 7.1 What Helps
 
-$$
-m = 1, \quad \Delta x = a,
-$$
+The final motion-mask method helps in two ways:
 
-or:
+1. It gives a motion-aware soft localization signal.
+2. On strongly dynamic scenes, it can slightly improve reconstruction quality.
 
-$$
-m = 0.2, \quad \Delta x = 5a.
-$$
+### 7.2 What Fails
 
-Both can produce similar final positions:
+The main failure modes are:
 
-$$
-m\Delta x \approx a.
-$$
+- **all-static collapse** in the early sparsity-based prototype,
+- **all-dynamic collapse** when `static_deform_lambda` is too large,
+- **soft ambiguity** when the mask stays in the middle range.
 
-Therefore, motion-mask quality must be evaluated separately from image quality.
+### 7.3 Why Similar Renders Can Hide Very Different Masks
 
-### 8.4 Difference from SDD-4DGS
+Two models can render almost the same image but learn very different masks. That is because the rendered result depends on the final deformed Gaussian positions, not directly on the mask itself.
 
-Compared with SDD-4DGS, our method is simpler and easier to integrate. It does not add a persistent per-Gaussian coefficient, so it avoids changing densification, pruning, saving, loading, and optimizer-state logic.
-
-However, this simplicity weakens identifiability. SDD-style per-Gaussian coefficients are more directly interpretable as static/dynamic probabilities. Our network-predicted mask is more flexible but less stable as a static/dynamic identity.
-
-## 9. Conclusion
-
-This project adds a motion-aware soft mask to a 4D Gaussian Splatting codebase. The mask is inserted inside the deformation network after the shared HexPlane feature and before applying deformation deltas. It gates position deformation and, with `--motion-gate-rot-scale`, also gates scale and rotation deformation.
-
-The main technical change is:
+For example:
 
 $$
-x_i(t) = x_i^0 + \Delta x_i(t)
+x_t = x_0 + m\Delta x
 $$
 
-becomes:
+can be similar for:
 
 $$
-x_i(t) = x_i^0 + m_i(t)\Delta x_i(t).
+m=1,\ \Delta x = a
 $$
 
-The mask is learned without ground-truth motion labels. Because reconstruction loss alone does not guarantee semantic separation, additional regularizers were added:
+and:
 
 $$
-\operatorname{mean}(m), \quad \operatorname{mean}(m(1-m)), \quad \operatorname{mean}((1-m)\|\Delta x\|_2).
+m=0.2,\ \Delta x = 5a.
 $$
 
-Experiments show that Lego does not benefit meaningfully from the mask, likely because its visible motion is small. On Bouncingballs, the regularized $10^{-3}$ setting modestly improves reconstruction metrics and produces a nontrivial soft motion mask around moving balls. A stronger $10^{-2}$ static-deformation penalty collapses to an all-dynamic mask, showing the need for balanced regularization.
+So mask quality must be evaluated separately from image quality.
 
-The final method should be described as a lightweight motion-aware soft-gating extension to 4DGS. It provides useful motion saliency and diagnostic visualization, but it is not yet a robust binary static/dynamic decomposition method.
+## 8. Conclusion
 
-## Appendix A: Commands Used
+This project adds a motion-aware soft mask to an existing 4D Gaussian Splatting codebase. The mask is inserted inside the deformation network after the shared feature `hidden` is computed and before deformation is applied.
 
-Baseline Bouncingballs:
+The final method is **not** the early sparsity-only prototype. The final method uses:
 
-```bash
-python train.py -s data/dnerf/bouncingballs --port 6017 --expname "dnerf/bouncingballs_baseline" --configs arguments/dnerf/bouncingballs.py
-```
+- motion-mask gating,
+- optional scale/rotation gating,
+- binarization loss,
+- static-deformation loss.
 
-Render baseline:
-
-```bash
-python render.py --model_path output/dnerf/bouncingballs_baseline --skip_train --configs arguments/dnerf/bouncingballs.py
-```
-
-Regularized motion, conservative:
-
-```bash
-python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 --port 6021 --expname "bouncingballs_motion_fixed_static1e-3_bin1e-3" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.001 --motion-bin-lambda 0.001
-```
-
-Regularized motion, strong static penalty:
-
-```bash
-python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_fixed_static1e-2_bin1e-3 --port 6022 --expname "bouncingballs_motion_fixed_static1e-2_bin1e-3" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.01 --motion-bin-lambda 0.001
-```
-
-Metrics:
-
-```bash
-python metrics.py -m output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 output/dnerf/bouncingballs_motion_fixed_static1e-2_bin1e-3 output/dnerf/bouncingballs_baseline
-```
-
+On Bouncingballs and Jumpingjacks, this final regularized formulation yields modest but consistent reconstruction gains and more meaningful soft motion localization than the early prototype. However, it still produces a soft mask rather than a robust binary static/dynamic decomposition.
