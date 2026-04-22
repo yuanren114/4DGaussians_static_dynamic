@@ -386,41 +386,49 @@ The early prototype did not show meaningful gains on Lego. Since Lego contains o
 
 Verified reconstruction metrics:
 
-| Method | SSIM ↑ | PSNR ↑ | LPIPS-vgg ↓ | LPIPS-alex ↓ | MS-SSIM ↑ | D-SSIM ↓ |
+| Method | SSIM | PSNR | LPIPS-vgg | LPIPS-alex | MS-SSIM | D-SSIM |
 |---|---:|---:|---:|---:|---:|---:|
 | Baseline | 0.9942868 | 40.6763 | 0.0153625 | 0.0060306 | 0.9953953 | 0.0023024 |
-| Final regularized method (`static=1e-3`, `bin=1e-3`) | **0.9945415** | **40.8666** | **0.0143814** | **0.0056324** | **0.9955825** | **0.0022088** |
+| Regularized variant (`static=1e-3`, `bin=1e-3`) | 0.9945415 | 40.8666 | 0.0143814 | 0.0056324 | 0.9955825 | 0.0022088 |
+| Regularized variant (`static=2e-3`, `bin=1e-3`) | 0.9944983 | **40.9611** | 0.0144220 | 0.0052267 | 0.9956228 | 0.0021886 |
+| Regularized variant (`static=2e-3`, `bin=2e-3`) | **0.9947041** | 40.8955 | **0.0136226** | **0.0050899** | **0.9956791** | **0.0021604** |
 | Over-regularized variant (`static=1e-2`, `bin=1e-3`) | 0.9942789 | 40.7233 | 0.0155924 | 0.0059685 | 0.9953101 | 0.0023450 |
 
 Interpretation:
 
-- The final regularized method improves all reconstruction metrics over baseline.
-- The improvement is modest, but it is consistent.
-- Too strong a static-deformation loss causes a worse mask and slightly worse reconstruction.
+- The regularized variants outperform baseline overall, but different settings optimize different goals.
+- `static=2e-3, bin=2e-3` gives the best reconstruction quality on Bouncingballs.
+- `static=2e-3, bin=1e-3` is slightly weaker on image metrics, but produces a more interpretable mask.
+- Too strong a static-deformation loss (`1e-2`) causes all-dynamic collapse.
 
 Mask diagnostics:
 
 | Method | mean | std | dynamic fraction | fraction > 0.4 | Qualitative mask |
 |---|---:|---:|---:|---:|---|
 | Early no-sparsity mask | 0.2475 | 0.0641 | 0.0001 | not logged | nearly uniform soft mask |
-| Final regularized method | 0.1851 | 0.1904 | 0.0117 | 0.2162 | moving balls show purple regions |
+| Regularized variant (`static=1e-3`, `bin=1e-3`) | 0.1851 | 0.1904 | 0.0117 | 0.2162 | moving balls show purple regions |
+| Regularized variant (`static=2e-3`, `bin=1e-3`) | 0.2179 | 0.2487 | 0.2604 | 0.3879 | clearest soft separation among stable settings |
+| Regularized variant (`static=2e-3`, `bin=2e-3`) | 0.1400 | 0.2137 | 0.0487 | 0.2615 | cleaner but more conservative mask |
 | Over-regularized variant | 0.9986 | 0.0022 | 1.0000 | 1.0000 | all red / all dynamic |
 
-This shows that the final method gives a more structured soft mask than the early prototype.
+This shows a clear tradeoff on Bouncingballs: best reconstruction and best motion-mask separability are not the same operating point.
 
 ### 6.4 Jumpingjacks Results
 
 Verified reconstruction metrics:
 
-| Method | SSIM ↑ | PSNR ↑ | LPIPS-vgg ↓ | LPIPS-alex ↓ | MS-SSIM ↑ | D-SSIM ↓ |
+| Method | SSIM | PSNR | LPIPS-vgg | LPIPS-alex | MS-SSIM | D-SSIM |
 |---|---:|---:|---:|---:|---:|---:|
 | Baseline | 0.9855952 | 35.4000 | 0.0199500 | 0.0126626 | 0.9936216 | 0.0031892 |
-| Final regularized method (`static=1e-3`, `bin=1e-3`) | **0.9863845** | **35.5784** | **0.0189655** | **0.0123328** | **0.9940146** | **0.0029927** |
+| Regularized variant (`static=1e-3`, `bin=1e-3`) | **0.9863845** | 35.5784 | 0.0189655 | **0.0123328** | **0.9940146** | **0.0029927** |
+| Regularized variant (`static=2e-3`, `bin=1e-3`) | 0.9863592 | **35.6238** | **0.0189545** | 0.0126150 | 0.9939969 | 0.0030016 |
+| Regularized variant (`static=2e-3`, `bin=2e-3`) | 0.9858798 | 35.3964 | 0.0198835 | 0.0131377 | 0.9936382 | 0.0031809 |
 
 Interpretation:
 
-- On Jumpingjacks, the same final regularized method again improves all reported reconstruction metrics.
-- This suggests that the method is more helpful on scenes with stronger motion.
+- Both `static=1e-3, bin=1e-3` and `static=2e-3, bin=1e-3` improve over baseline.
+- `static=2e-3, bin=1e-3` is the most balanced Jumpingjacks setting: best PSNR and best LPIPS-vgg, with SSIM nearly unchanged.
+- Unlike Bouncingballs, increasing binarization to `2e-3` hurts Jumpingjacks reconstruction.
 
 ## 7. Discussion
 
@@ -439,7 +447,30 @@ The main failure modes are:
 - **all-dynamic collapse** when `static_deform_lambda` is too large,
 - **soft ambiguity** when the mask stays in the middle range.
 
-### 7.3 Why Similar Renders Can Hide Very Different Masks
+### 7.3 Cross-Scene Hyperparameter Finding
+
+The newer experiments show that no single setting is best for every objective on every scene.
+
+For Bouncingballs:
+
+- `static=2e-3, bin=2e-3` gives the best reconstruction metrics,
+- `static=2e-3, bin=1e-3` gives the clearest soft motion-mask separation.
+
+For Jumpingjacks:
+
+- `static=2e-3, bin=1e-3` remains strong,
+- `static=2e-3, bin=2e-3` does not generalize and degrades reconstruction.
+
+Therefore, the most robust cross-scene choice is:
+
+$$
+\lambda_{\text{static}} = 2 \times 10^{-3}, \qquad
+\lambda_{\text{bin}} = 1 \times 10^{-3}.
+$$
+
+This is the best single configuration to report if one setting must be used across multiple scenes.
+
+### 7.4 Why Similar Renders Can Hide Very Different Masks
 
 Two models can render almost the same image but learn very different masks. That is because the rendered result depends on the final deformed Gaussian positions, not directly on the mask itself.
 
@@ -474,4 +505,4 @@ The final method is **not** the early sparsity-only prototype. The final method 
 - binarization loss,
 - static-deformation loss.
 
-On Bouncingballs and Jumpingjacks, this final regularized formulation yields modest but consistent reconstruction gains and more meaningful soft motion localization than the early prototype. However, it still produces a soft mask rather than a robust binary static/dynamic decomposition.
+On Bouncingballs and Jumpingjacks, this final regularized formulation yields modest but consistent reconstruction gains and more meaningful soft motion localization than the early prototype. The experiments also show that best reconstruction and best mask separability are not always the same operating point. Across scenes, `static=2e-3, bin=1e-3` is the most robust setting, while Bouncingballs alone favors `static=2e-3, bin=2e-3` for pure reconstruction quality. However, it still produces a soft mask rather than a robust binary static/dynamic decomposition.

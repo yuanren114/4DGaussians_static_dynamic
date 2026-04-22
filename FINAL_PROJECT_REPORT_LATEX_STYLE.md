@@ -198,20 +198,24 @@ Verified Bouncingballs reconstruction metrics:
 | Method | SSIM | PSNR | LPIPS-vgg | LPIPS-alex | MS-SSIM | D-SSIM |
 |---|---:|---:|---:|---:|---:|---:|
 | Baseline | 0.9942868 | 40.6763 | 0.0153625 | 0.0060306 | 0.9953953 | 0.0023024 |
-| Final regularized method ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | **0.9945415** | **40.8666** | **0.0143814** | **0.0056324** | **0.9955825** | **0.0022088** |
+| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.9945415 | 40.8666 | 0.0143814 | 0.0056324 | 0.9955825 | 0.0022088 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.9944983 | **40.9611** | 0.0144220 | 0.0052267 | 0.9956228 | 0.0021886 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$) | **0.9947041** | 40.8955 | **0.0136226** | **0.0050899** | **0.9956791** | **0.0021604** |
 | Over-regularized variant ($\lambda_{\text{static}}=10^{-2}, \lambda_{\text{bin}}=10^{-3}$) | 0.9942789 | 40.7233 | 0.0155924 | 0.0059685 | 0.9953101 | 0.0023450 |
 
-The final regularized method yields modest but consistent improvements over baseline across all reconstruction metrics.
+These results show a scene-level tradeoff. The setting $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$ gives the best reconstruction quality on Bouncingballs, while $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ gives the clearest soft-mask separation.
 
 Mask diagnostics:
 
 | Method | Final mean | Final std | Final dynamic fraction | Final fraction $m>0.4$ | Qualitative mask |
 |---|---:|---:|---:|---:|---|
 | Early no-sparsity mask | 0.2475 | 0.0641 | 0.0001 | not logged | nearly uniform soft mask |
-| Final regularized method | 0.1851 | 0.1904 | 0.0117 | 0.2162 | moving balls show purple regions |
+| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.1851 | 0.1904 | 0.0117 | 0.2162 | moving balls show purple regions |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.2179 | 0.2487 | 0.2604 | 0.3879 | clearest soft separation among stable settings |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$) | 0.1400 | 0.2137 | 0.0487 | 0.2615 | cleaner but more conservative mask |
 | Over-regularized variant | 0.9986 | 0.0022 | 1.0000 | 1.0000 | all-dynamic collapse |
 
-These results show that the final method improves both reconstruction and motion localization compared with the earlier prototype, while overly strong regularization causes all-dynamic collapse.
+Thus, best reconstruction and best mask separability are not the same operating point for this scene.
 
 ### 4.5 Main Results: Jumpingjacks
 
@@ -220,13 +224,15 @@ Verified Jumpingjacks reconstruction metrics:
 | Method | SSIM | PSNR | LPIPS-vgg | LPIPS-alex | MS-SSIM | D-SSIM |
 |---|---:|---:|---:|---:|---:|---:|
 | Baseline | 0.9855952 | 35.4000 | 0.0199500 | 0.0126626 | 0.9936216 | 0.0031892 |
-| Final regularized method ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | **0.9863845** | **35.5784** | **0.0189655** | **0.0123328** | **0.9940146** | **0.0029927** |
+| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | **0.9863845** | 35.5784 | 0.0189655 | **0.0123328** | **0.9940146** | **0.0029927** |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.9863592 | **35.6238** | **0.0189545** | 0.0126150 | 0.9939969 | 0.0030016 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$) | 0.9858798 | 35.3964 | 0.0198835 | 0.0131377 | 0.9936382 | 0.0031809 |
 
-The final regularized method again produces modest but consistent gains across all reported metrics.
+Both $\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$ and $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ improve over baseline. However, unlike Bouncingballs, increasing the binarization weight to $2\times10^{-3}$ degrades Jumpingjacks reconstruction.
 
 ### 4.6 Qualitative Summary
 
-The final regularized method is most convincing on scenes with stronger motion. On Bouncingballs, the learned mask provides nontrivial soft motion localization on the moving balls. On Jumpingjacks, the same formulation improves reconstruction quality over the baseline. This suggests that the added motion-aware regularization is more useful on scenes with larger dynamic regions.
+The final regularized method is most convincing on scenes with stronger motion. On Bouncingballs, the learned mask provides nontrivial soft motion localization on the moving balls, and a tradeoff appears between reconstruction quality and mask separability. On Jumpingjacks, the same regularization family improves reconstruction over baseline, but the stronger binarization setting does not generalize. This suggests that the added motion-aware regularization is useful, but the best hyperparameter choice is scene-dependent.
 
 ## 5. Discussion
 
@@ -245,7 +251,25 @@ The main failure modes are:
 2. **Soft ambiguous masks**, where the mask stays in the middle range.
 3. **All-dynamic collapse**, when static-deformation regularization is too strong.
 
-### 5.3 Limitations vs. SDD-4DGS
+### 5.3 Cross-Scene Hyperparameter Finding
+
+The new experiments support one practical conclusion. If a single setting must be selected across scenes, the most robust choice is
+
+$$
+\lambda_{\text{static}} = 2\times10^{-3}, \qquad
+\lambda_{\text{bin}} = 10^{-3}.
+$$
+
+This choice remains strong on both Bouncingballs and Jumpingjacks. In contrast, the stronger binarization setting
+
+$$
+\lambda_{\text{static}} = 2\times10^{-3}, \qquad
+\lambda_{\text{bin}} = 2\times10^{-3}
+$$
+
+is attractive for Bouncingballs reconstruction alone, but does not generalize to Jumpingjacks.
+
+### 5.4 Limitations vs. SDD-4DGS
 
 Compared with SDD-4DGS, this project uses a simpler soft-gating implementation rather than a full per-Gaussian decoupling framework. This makes the method easier to integrate, but also less principled and less directly interpretable as a binary static/dynamic assignment.
 
@@ -253,4 +277,4 @@ Compared with SDD-4DGS, this project uses a simpler soft-gating implementation r
 
 This project introduces a motion-aware soft mask into an existing 4D Gaussian Splatting codebase. The final method uses the mask to gate deformation and regularizes it through binarization and static-deformation penalties. The earlier sparsity-only prototype was not successful and was not retained as part of the final method.
 
-The verified experiments support the following conclusion: the final regularized motion-mask formulation can produce meaningful soft motion localization and modest but consistent reconstruction improvements on strongly dynamic D-NeRF scenes such as Bouncingballs and Jumpingjacks. However, the current method still produces a soft mask rather than a robust binary static/dynamic decomposition.
+The verified experiments support the following conclusion: the final regularized motion-mask formulation can produce meaningful soft motion localization and modest but consistent reconstruction improvements on strongly dynamic D-NeRF scenes such as Bouncingballs and Jumpingjacks. The experiments also show that best reconstruction and best mask separability are not always achieved by the same setting. Across the tested scenes, $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ is the most robust overall choice, while $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$ is better interpreted as a scene-specific Bouncingballs reconstruction optimum. The current method still produces a soft mask rather than a robust binary static/dynamic decomposition.
