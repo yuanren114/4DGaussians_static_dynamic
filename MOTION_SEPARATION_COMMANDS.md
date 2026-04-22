@@ -156,6 +156,44 @@ python -c "import torch; m=torch.load('output/dnerf/bouncingballs_motion_fixed_s
 python -c "import open3d as o3d; p=o3d.io.read_point_cloud('output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3/point_cloud/iteration_20000/motion_mask_colors.ply'); o3d.visualization.draw_geometries([p])"
 ```
 
+## HyperNeRF Chickchicken
+
+### HyperNeRF chickchicken baseline train
+
+```bash
+python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_baseline --port 6031 --expname "hypernerf/interp/chickchicken_baseline" --configs arguments/hypernerf/default.py
+```
+
+### HyperNeRF chickchicken baseline render
+
+```bash
+python render.py --model_path output/hypernerf/interp/chickchicken_baseline --skip_train --configs arguments/hypernerf/default.py
+```
+
+### HyperNeRF chickchicken motion train (`static=2e-3`, `bin=1e-3`)
+
+```bash
+python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3 --port 6032 --expname "hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3" --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.002 --motion-bin-lambda 0.001
+```
+
+### HyperNeRF chickchicken motion render (`static=2e-3`, `bin=1e-3`)
+
+```bash
+python render.py --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3 --skip_train --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale
+```
+
+### HyperNeRF chickchicken metrics compare
+
+```bash
+python metrics.py -m output/hypernerf/interp/chickchicken_baseline output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3
+```
+
+### HyperNeRF chickchicken motion mask stats
+
+```bash
+tail -n 10 output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3/motion_mask_stats.jsonl
+```
+
 ## Suggested Order
 
 1. Run `bouncingballs_baseline`.
