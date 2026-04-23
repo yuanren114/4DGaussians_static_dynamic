@@ -369,6 +369,33 @@ $$
 
 ## 6. Experiments
 
+### 6.0 Motion-Mask Diagnostic Definitions
+
+Besides standard rendering metrics, this report uses several diagnostics from `motion_mask_stats.jsonl` to understand whether the learned mask is meaningful.
+
+For a Gaussian $i$ at time $t$, the model predicts a soft motion mask:
+
+$$
+m_i(t) \in [0,1].
+$$
+
+Larger $m_i(t)$ means the Gaussian is allowed to participate more strongly in deformation. Smaller $m_i(t)$ means the Gaussian is encouraged to remain more static.
+
+The diagnostic columns mean:
+
+| Diagnostic | Definition | Interpretation |
+|---|---|---|
+| `mean` | average value of $m$ over all Gaussians in the logged render step | overall mask activation level |
+| `std` | standard deviation of $m$ | how spread out the mask values are |
+| `dynamic fraction` | fraction of Gaussians with $m>0.5$ | strict estimate of how many Gaussians are classified as dynamic |
+| `fraction > 0.4` | fraction of Gaussians with $m>0.4$ | softer estimate of active motion regions |
+| `static deformation` | mean value of $(1-m)\|\Delta x\|_2$ | how much low-mask Gaussians still move; lower is better for static consistency |
+| `binarization` | mean value of $m(1-m)$ | how close the mask is to 0 or 1; lower is more binary |
+
+The maximum value of $m(1-m)$ is $0.25$, which happens when $m=0.5$. Therefore, a binarization value near `0.25` means the mask is still very soft or ambiguous. A value near `0` means the mask is closer to binary.
+
+These diagnostics are not ground-truth motion accuracy. They are internal consistency measures used because the datasets do not provide ground-truth static/dynamic Gaussian labels.
+
 ### 6.1 Main Experimental Scenes
 
 The main scenes used to evaluate the **final method** are:

@@ -186,6 +186,27 @@ The codebase does not provide RMSE in the standard evaluation script. Training t
 
 Additional motion-mask diagnostics come from `motion_mask_stats.jsonl`.
 
+Before reporting these diagnostics, we define them explicitly. For Gaussian $i$ at time $t$, the motion-mask head predicts a soft coefficient
+
+$$
+m_i(t) \in [0,1].
+$$
+
+Larger $m_i(t)$ means the Gaussian is allowed to participate more strongly in deformation, while smaller $m_i(t)$ means it is encouraged to remain closer to static.
+
+The reported motion-mask diagnostics are:
+
+| Diagnostic | Definition | Interpretation |
+|---|---|---|
+| Mean | average value of $m$ over all Gaussians in the logged render step | overall mask activation level |
+| Standard deviation | standard deviation of $m$ | how spread out the mask values are |
+| Dynamic fraction | fraction of Gaussians with $m>0.5$ | strict estimate of how many Gaussians are classified as dynamic |
+| Fraction $m>0.4$ | fraction of Gaussians with $m>0.4$ | softer estimate of active motion regions |
+| Static deformation | mean value of $(1-m)\|\Delta x\|_2$ | how much low-mask Gaussians still move; lower is better for static consistency |
+| Binarization | mean value of $m(1-m)$ | how close the mask is to 0 or 1; lower is more binary |
+
+The maximum value of $m(1-m)$ is $0.25$, which happens when $m=0.5$. Therefore, a binarization value near $0.25$ indicates a soft or ambiguous mask, while a value near $0$ indicates a more binary mask. These diagnostics are not ground-truth motion accuracy, because the datasets do not provide ground-truth static/dynamic Gaussian labels.
+
 ### 4.3 Early Pilot Results
 
 An early prototype used either:
