@@ -375,6 +375,7 @@ The main scenes used to evaluate the **final method** are:
 
 - Bouncingballs
 - Jumpingjacks
+- HyperNeRF chickchicken
 
 Lego was only used in early pilot experiments before the final regularized formulation was established.
 
@@ -430,6 +431,48 @@ Interpretation:
 - `static=2e-3, bin=1e-3` is the most balanced Jumpingjacks setting: best PSNR and best LPIPS-vgg, with SSIM nearly unchanged.
 - Unlike Bouncingballs, increasing binarization to `2e-3` hurts Jumpingjacks reconstruction.
 
+### 6.5 HyperNeRF Chickchicken Results
+
+HyperNeRF chickchicken is a more difficult real-world scene than the clean synthetic D-NeRF scenes. It uses the HyperNeRF dataset format and was trained with the HyperNeRF default configuration at 14,000 fine iterations. Because of memory limits, these runs used batch size 1.
+
+Verified reconstruction metrics:
+
+| Method | SSIM | PSNR | LPIPS-vgg | LPIPS-alex | MS-SSIM | D-SSIM |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline (`bs1`) | **0.7968500** | **26.9153** | **0.3368862** | **0.1853653** | 0.9106787 | 0.0446607 |
+| Regularized variant (`static=1e-3`, `bin=1e-3`, `bs1`) | 0.7967568 | 26.8727 | 0.3421589 | 0.1861793 | **0.9110526** | **0.0444737** |
+| Regularized variant (`static=2e-3`, `bin=1e-3`, `bs1`) | 0.7967100 | 26.9141 | 0.3440263 | 0.1903088 | 0.9106759 | 0.0446621 |
+
+Interpretation:
+
+- On HyperNeRF chickchicken, motion separation does **not** improve the main reconstruction metrics.
+- The baseline is slightly better on SSIM, PSNR, LPIPS-vgg, and LPIPS-alex.
+- The `static=1e-3, bin=1e-3` variant is slightly better on MS-SSIM and D-SSIM, but the difference is small.
+- The `static=2e-3, bin=1e-3` variant nearly matches baseline PSNR, but has worse LPIPS.
+
+The main conclusion is:
+
+> on HyperNeRF chickchicken, motion-mask regularization preserves reconstruction quality close to baseline, but it does not produce a quantitative rendering improvement.
+
+However, the motion-mask statistics tell a different story from the image metrics.
+
+Final-iteration mask diagnostics:
+
+| Method | mean | std | dynamic fraction | fraction > 0.4 | static deformation | binarization |
+|---|---:|---:|---:|---:|---:|---:|
+| Regularized variant (`static=1e-3`, `bin=1e-3`, `bs1`) | 0.2056 | 0.2649 | 0.2190 | 0.3844 | 0.1120 | 0.0932 |
+| Regularized variant (`static=2e-3`, `bin=1e-3`, `bs1`) | 0.4152 | 0.4878 | 0.4188 | 0.4192 | 0.0050 | 0.0049 |
+
+Interpretation:
+
+- Increasing `static_deform_lambda` from `1e-3` to `2e-3` makes the mask much cleaner.
+- The static-weighted deformation penalty drops from about `0.1120` to about `0.0050`.
+- The binarization diagnostic drops from about `0.0932` to about `0.0049`, even though `bin_lambda` is unchanged.
+- This indicates that the stronger static-deformation penalty indirectly helps the mask become closer to a two-state separation.
+- The `static=2e-3, bin=1e-3` setting is therefore better for motion-mask interpretability on HyperNeRF, even though it is not better for image metrics.
+
+This is an important result: reconstruction quality and motion-mask separation quality are not the same objective. A model can render almost the same image while learning a much cleaner or much worse decomposition.
+
 ## 7. Discussion
 
 ### 7.1 What Helps
@@ -461,6 +504,12 @@ For Jumpingjacks:
 - `static=2e-3, bin=1e-3` remains strong,
 - `static=2e-3, bin=2e-3` does not generalize and degrades reconstruction.
 
+For HyperNeRF chickchicken:
+
+- baseline remains slightly better on most reconstruction metrics,
+- `static=2e-3, bin=1e-3` gives much cleaner motion-mask diagnostics than `static=1e-3, bin=1e-3`,
+- the stronger static-deformation penalty greatly reduces deformation in low-mask regions.
+
 Therefore, the most robust cross-scene choice is:
 
 $$
@@ -468,7 +517,7 @@ $$
 \lambda_{\text{bin}} = 1 \times 10^{-3}.
 $$
 
-This is the best single configuration to report if one setting must be used across multiple scenes.
+This is the best single configuration to report if one setting must be used across multiple scenes. It is not always the best reconstruction setting, but it is the most consistent setting for producing interpretable motion separation without obvious collapse.
 
 ### 7.4 Why Similar Renders Can Hide Very Different Masks
 
@@ -505,4 +554,6 @@ The final method is **not** the early sparsity-only prototype. The final method 
 - binarization loss,
 - static-deformation loss.
 
-On Bouncingballs and Jumpingjacks, this final regularized formulation yields modest but consistent reconstruction gains and more meaningful soft motion localization than the early prototype. The experiments also show that best reconstruction and best mask separability are not always the same operating point. Across scenes, `static=2e-3, bin=1e-3` is the most robust setting, while Bouncingballs alone favors `static=2e-3, bin=2e-3` for pure reconstruction quality. However, it still produces a soft mask rather than a robust binary static/dynamic decomposition.
+On Bouncingballs and Jumpingjacks, this final regularized formulation yields modest reconstruction gains and more meaningful soft motion localization than the early prototype. On HyperNeRF chickchicken, the method does not improve reconstruction metrics, but the mask diagnostics show that `static=2e-3, bin=1e-3` produces a much cleaner decomposition than `static=1e-3, bin=1e-3`.
+
+Overall, the experiments show that best reconstruction and best mask separability are not always the same operating point. Across scenes, `static=2e-3, bin=1e-3` is the most robust setting for interpretable motion separation, while Bouncingballs alone favors `static=2e-3, bin=2e-3` for pure reconstruction quality. The current method should therefore be presented as a soft, unsupervised motion-decomposition mechanism, not as a guaranteed reconstruction-quality improvement or a fully binary static/dynamic separator.

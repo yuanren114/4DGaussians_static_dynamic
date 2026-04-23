@@ -4,7 +4,7 @@
 
 This project studies motion-aware dynamic scene reconstruction in a modified 4D Gaussian Splatting (4DGS) codebase. The original 4DGS framework models time-varying scenes through a deformation network applied to canonical Gaussians. However, the baseline method does not explicitly indicate which Gaussians should remain static and which should participate in motion. To address this, we implemented a lightweight motion-mask branch inside the deformation network. The mask acts as a soft coefficient that gates deformation and is learned jointly with reconstruction.
 
-An early prototype used only a sparsity-style mask regularizer, but later experiments showed that this term mainly encouraged collapse and was not useful in the final method. The final method reported in this project instead uses a soft motion mask together with a binarization loss and a static-deformation loss. The method is unsupervised with respect to motion labels: it uses only image reconstruction and regularization, without ground-truth static/dynamic masks. Verified experiments on D-NeRF scenes show that the final regularized motion-mask variant produces more meaningful soft motion localization and yields modest but consistent reconstruction gains on strongly dynamic scenes such as Bouncingballs and Jumpingjacks.
+An early prototype used only a sparsity-style mask regularizer, but later experiments showed that this term mainly encouraged collapse and was not useful in the final method. The final method reported in this project instead uses a soft motion mask together with a binarization loss and a static-deformation loss. The method is unsupervised with respect to motion labels: it uses only image reconstruction and regularization, without ground-truth static/dynamic masks. Verified experiments on D-NeRF scenes show that the final regularized motion-mask variant produces more meaningful soft motion localization and yields modest reconstruction gains on strongly dynamic scenes such as Bouncingballs and Jumpingjacks. A HyperNeRF chickchicken experiment shows that the method does not necessarily improve reconstruction metrics on real-world data, but stronger static-deformation regularization can produce cleaner mask diagnostics.
 
 ## 1. Introduction
 
@@ -157,6 +157,10 @@ The main reported experiments use D-NeRF scenes with stronger motion:
 - Bouncingballs
 - Jumpingjacks
 
+The report also includes one real-world HyperNeRF scene:
+
+- HyperNeRF chickchicken
+
 Lego was only used in early pilot experiments before the final regularized method was established.
 
 The default D-NeRF configuration in this codebase includes:
@@ -230,9 +234,32 @@ Verified Jumpingjacks reconstruction metrics:
 
 Both $\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$ and $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ improve over baseline. However, unlike Bouncingballs, increasing the binarization weight to $2\times10^{-3}$ degrades Jumpingjacks reconstruction.
 
-### 4.6 Qualitative Summary
+### 4.6 Main Results: HyperNeRF Chickchicken
 
-The final regularized method is most convincing on scenes with stronger motion. On Bouncingballs, the learned mask provides nontrivial soft motion localization on the moving balls, and a tradeoff appears between reconstruction quality and mask separability. On Jumpingjacks, the same regularization family improves reconstruction over baseline, but the stronger binarization setting does not generalize. This suggests that the added motion-aware regularization is useful, but the best hyperparameter choice is scene-dependent.
+HyperNeRF chickchicken is a more difficult real-world scene than the clean synthetic D-NeRF scenes. The runs below use the HyperNeRF default configuration, 14,000 fine iterations, and batch size 1.
+
+Verified HyperNeRF chickchicken reconstruction metrics:
+
+| Method | SSIM | PSNR | LPIPS-vgg | LPIPS-alex | MS-SSIM | D-SSIM |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline (`bs1`) | **0.7968500** | **26.9153** | **0.3368862** | **0.1853653** | 0.9106787 | 0.0446607 |
+| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$, `bs1`) | 0.7967568 | 26.8727 | 0.3421589 | 0.1861793 | **0.9110526** | **0.0444737** |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$, `bs1`) | 0.7967100 | 26.9141 | 0.3440263 | 0.1903088 | 0.9106759 | 0.0446621 |
+
+On this scene, motion-mask regularization does not improve the main reconstruction metrics. The baseline is slightly better on SSIM, PSNR, LPIPS-vgg, and LPIPS-alex. The $\lambda_{\text{static}}=10^{-3}$ variant slightly improves MS-SSIM and D-SSIM, but the difference is small.
+
+However, the mask diagnostics show a clearer separation effect:
+
+| Method | Final mean | Final std | Final dynamic fraction | Final fraction $m>0.4$ | Static deformation | Binarization |
+|---|---:|---:|---:|---:|---:|---:|
+| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$, `bs1`) | 0.2056 | 0.2649 | 0.2190 | 0.3844 | 0.1120 | 0.0932 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$, `bs1`) | 0.4152 | 0.4878 | 0.4188 | 0.4192 | 0.0050 | 0.0049 |
+
+Increasing $\lambda_{\text{static}}$ from $10^{-3}$ to $2\times10^{-3}$ greatly reduces deformation in low-mask regions. The static-weighted deformation diagnostic drops from about $0.1120$ to about $0.0050$, and the binarization diagnostic drops from about $0.0932$ to about $0.0049$. Thus, on HyperNeRF chickchicken, $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ is better for motion-mask interpretability, even though it is not better for image metrics.
+
+### 4.7 Qualitative Summary
+
+The final regularized method is most convincing on scenes with stronger motion. On Bouncingballs, the learned mask provides nontrivial soft motion localization on the moving balls, and a tradeoff appears between reconstruction quality and mask separability. On Jumpingjacks, the same regularization family improves reconstruction over baseline, but the stronger binarization setting does not generalize. On HyperNeRF chickchicken, reconstruction metrics remain close to baseline rather than improving, but the mask diagnostics show that the stronger static-deformation penalty produces a much cleaner decomposition. This suggests that the added motion-aware regularization is useful mainly as an interpretability and decomposition mechanism, while reconstruction gains are scene-dependent.
 
 ## 5. Discussion
 
@@ -260,7 +287,7 @@ $$
 \lambda_{\text{bin}} = 10^{-3}.
 $$
 
-This choice remains strong on both Bouncingballs and Jumpingjacks. In contrast, the stronger binarization setting
+This choice remains strong on both Bouncingballs and Jumpingjacks, and it produces the cleanest tested HyperNeRF chickchicken mask diagnostics. In contrast, the stronger binarization setting
 
 $$
 \lambda_{\text{static}} = 2\times10^{-3}, \qquad
@@ -277,4 +304,6 @@ Compared with SDD-4DGS, this project uses a simpler soft-gating implementation r
 
 This project introduces a motion-aware soft mask into an existing 4D Gaussian Splatting codebase. The final method uses the mask to gate deformation and regularizes it through binarization and static-deformation penalties. The earlier sparsity-only prototype was not successful and was not retained as part of the final method.
 
-The verified experiments support the following conclusion: the final regularized motion-mask formulation can produce meaningful soft motion localization and modest but consistent reconstruction improvements on strongly dynamic D-NeRF scenes such as Bouncingballs and Jumpingjacks. The experiments also show that best reconstruction and best mask separability are not always achieved by the same setting. Across the tested scenes, $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ is the most robust overall choice, while $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$ is better interpreted as a scene-specific Bouncingballs reconstruction optimum. The current method still produces a soft mask rather than a robust binary static/dynamic decomposition.
+The verified experiments support the following conclusion: the final regularized motion-mask formulation can produce meaningful soft motion localization and modest reconstruction improvements on strongly dynamic D-NeRF scenes such as Bouncingballs and Jumpingjacks. On HyperNeRF chickchicken, the method does not improve reconstruction metrics, but the mask diagnostics show that $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ produces a much cleaner decomposition than $\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$.
+
+The experiments also show that best reconstruction and best mask separability are not always achieved by the same setting. Across the tested scenes, $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ is the most robust overall choice for interpretable motion separation, while $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$ is better interpreted as a scene-specific Bouncingballs reconstruction optimum. The current method should be presented as a soft, unsupervised motion-decomposition mechanism rather than a guaranteed reconstruction-quality improvement or a fully binary static/dynamic separator.
