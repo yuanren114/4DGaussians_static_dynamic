@@ -36,10 +36,10 @@ Two representative quantitative comparisons reported by the paper are summarized
 
 | Benchmark | Baseline 4DGS | SDD-4DGS | Reported Change |
 |---|---:|---:|---:|
-| D-NeRF PSNR | 34.14 | 34.82 | +0.68 |
-| D-NeRF SSIM | 0.94 | 0.96 | +0.02 |
-| HyperNeRF mean PSNR | 22.33 | 22.62 | +0.29 |
-| HyperNeRF mean SSIM | 0.765 | 0.772 | +0.007 |
+| D-NeRF PSNR \(\uparrow\) | 34.14 | **34.82** | +0.68 |
+| D-NeRF SSIM \(\uparrow\) | 0.94 | **0.96** | +0.02 |
+| HyperNeRF mean PSNR \(\uparrow\) | 22.33 | **22.62** | +0.29 |
+| HyperNeRF mean SSIM \(\uparrow\) | 0.765 | **0.772** | +0.007 |
 
 These numbers indicate that SDD-4DGS is presented as an improvement over baseline 4DGS. However, the current project is not a reproduction of SDD-4DGS. The implementation here is simpler and uses a predicted soft motion gate rather than a persistent per-Gaussian dynamic parameter.
 
@@ -274,12 +274,12 @@ without the later binarization and static-deformation terms. This design did not
 
 #### Reconstruction Metrics
 
-| Method | SSIM | PSNR | LPIPS-VGG | LPIPS-Alex | MS-SSIM | D-SSIM |
+| Method | SSIM \(\uparrow\) | PSNR \(\uparrow\) | LPIPS-VGG \(\downarrow\) | LPIPS-Alex \(\downarrow\) | MS-SSIM \(\uparrow\) | D-SSIM \(\downarrow\) |
 |---|---:|---:|---:|---:|---:|---:|
 | Baseline 4DGS | 0.9942868 | 40.6763 | 0.0153625 | 0.0060306 | 0.9953953 | 0.0023024 |
 | Motion 1e-3 / 1e-3 | 0.9945415 | 40.8666 | 0.0143814 | 0.0056324 | 0.9955825 | 0.0022088 |
-| Motion 2e-3 / 1e-3 | 0.9944983 | 40.9611 | 0.0144220 | 0.0052267 | 0.9956228 | 0.0021886 |
-| Motion 2e-3 / 2e-3 | 0.9947041 | 40.8955 | 0.0136226 | 0.0050899 | 0.9956791 | 0.0021604 |
+| Motion 2e-3 / 1e-3 | 0.9944983 | **40.9611** | 0.0144220 | 0.0052267 | 0.9956228 | 0.0021886 |
+| Motion 2e-3 / 2e-3 | **0.9947041** | 40.8955 | **0.0136226** | **0.0050899** | **0.9956791** | **0.0021604** |
 | Motion 1e-2 / 1e-3 | 0.9942789 | 40.7233 | 0.0155924 | 0.0059685 | 0.9953101 | 0.0023450 |
 
 #### Motion-Mask Diagnostics
@@ -306,11 +306,11 @@ Third, excessive static regularization can collapse the model into an almost all
 
 #### Reconstruction Metrics
 
-| Method | SSIM | PSNR | LPIPS-VGG | LPIPS-Alex | MS-SSIM | D-SSIM |
+| Method | SSIM \(\uparrow\) | PSNR \(\uparrow\) | LPIPS-VGG \(\downarrow\) | LPIPS-Alex \(\downarrow\) | MS-SSIM \(\uparrow\) | D-SSIM \(\downarrow\) |
 |---|---:|---:|---:|---:|---:|---:|
 | Baseline 4DGS | 0.9855952 | 35.4000 | 0.0199500 | 0.0126626 | 0.9936216 | 0.0031892 |
-| Motion 1e-3 / 1e-3 | 0.9863845 | 35.5784 | 0.0189655 | 0.0123328 | 0.9940146 | 0.0029927 |
-| Motion 2e-3 / 1e-3 | 0.9863592 | 35.6238 | 0.0189545 | 0.0126150 | 0.9939969 | 0.0030016 |
+| Motion 1e-3 / 1e-3 | **0.9863845** | 35.5784 | 0.0189655 | **0.0123328** | **0.9940146** | **0.0029927** |
+| Motion 2e-3 / 1e-3 | 0.9863592 | **35.6238** | **0.0189545** | 0.0126150 | 0.9939969 | 0.0030016 |
 | Motion 2e-3 / 2e-3 | 0.9858798 | 35.3964 | 0.0198835 | 0.0131377 | 0.9936382 | 0.0031809 |
 
 #### Motion-Mask Diagnostics
@@ -331,10 +331,10 @@ The mask diagnostics show a different pattern from Bouncingballs. Increasing \(\
 
 #### Reconstruction Metrics
 
-| Method | SSIM | PSNR | LPIPS-VGG | LPIPS-Alex | MS-SSIM | D-SSIM |
+| Method | SSIM \(\uparrow\) | PSNR \(\uparrow\) | LPIPS-VGG \(\downarrow\) | LPIPS-Alex \(\downarrow\) | MS-SSIM \(\uparrow\) | D-SSIM \(\downarrow\) |
 |---|---:|---:|---:|---:|---:|---:|
-| Baseline 4DGS | 0.7968500 | 26.9152870 | 0.3368862 | 0.1853653 | 0.9106787 | 0.0446607 |
-| Motion 1e-3 / 1e-3 | 0.7967568 | 26.8726616 | 0.3421589 | 0.1861793 | 0.9110526 | 0.0444737 |
+| Baseline 4DGS | **0.7968500** | **26.9152870** | **0.3368862** | **0.1853653** | 0.9106787 | 0.0446607 |
+| Motion 1e-3 / 1e-3 | 0.7967568 | 26.8726616 | 0.3421589 | 0.1861793 | **0.9110526** | **0.0444737** |
 | Motion 2e-3 / 1e-3 | 0.7967100 | 26.9141216 | 0.3440263 | 0.1903088 | 0.9106759 | 0.0446621 |
 
 #### Motion-Mask Diagnostics
