@@ -1,50 +1,62 @@
-# 4D Gaussian Splatting for Real-Time Dynamic Scene Rendering
+# 4DGaussians Static-Dynamic Motion Separation Fork
 
-## CVPR 2024
+This repository is based on the original **4D Gaussian Splatting** codebase:
 
-### [Project Page](https://guanjunwu.github.io/4dgs/index.html)| [arXiv Paper](https://arxiv.org/abs/2310.08528)
+- upstream project page: <https://guanjunwu.github.io/4dgs/index.html>
+- upstream paper: <https://arxiv.org/abs/2310.08528>
 
-[Guanjun Wu](https://guanjunwu.github.io/) <sup>1*</sup>, [Taoran Yi](https://github.com/taoranyi) <sup>2*</sup>,
-[Jiemin Fang](https://jaminfong.cn/) <sup>3‡</sup>, [Lingxi Xie](http://lingxixie.com/) <sup>3 </sup>, </br>[Xiaopeng Zhang](https://scholar.google.com/citations?user=Ud6aBAcAAAAJ&hl=zh-CN) <sup>3 </sup>, [Wei Wei](https://www.eric-weiwei.com/) <sup>1 </sup>,[Wenyu Liu](http://eic.hust.edu.cn/professor/liuwenyu/) <sup>2 </sup>, [Qi Tian](https://www.qitian1987.com/) <sup>3 </sup> , [Xinggang Wang](https://xwcv.github.io) <sup>2‡✉</sup>
+This fork keeps the original 4DGS training and rendering pipeline, and adds a lightweight **motion-separation** mechanism for static-dynamic analysis.
 
-<sup>1 </sup>School of CS, HUST &emsp; <sup>2 </sup>School of EIC, HUST &emsp; <sup>3 </sup>Huawei Inc. &emsp;
+## What This Fork Adds
 
-<sup>\*</sup> Equal Contributions. <sup>$\ddagger$</sup> Project Lead. <sup>✉</sup> Corresponding Author.
+The main modification is a **soft motion mask** predicted inside the deformation network.
 
+For each Gaussian at time \(t\), the code predicts a scalar motion coefficient \(m_i(t)\in[0,1]\) and uses it to gate deformation:
 
+\[
+\mu_i(t) = \mu_i^0 + m_i(t)\Delta \mu_i(t)
+\]
 
-![block](assets/teaserfig.jpg)
-Our method converges very quickly and achieves real-time rendering speed.
+Optionally, the same gate can also be applied to scale and rotation updates.
 
-New Colab demo:[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1wz0D5Y9egAlcxXy8YO9UmpQ9oH51R7OW?usp=sharing) (Thanks [Tasmay-Tibrewal
-](https://github.com/Tasmay-Tibrewal))
+The current motion-separation implementation supports:
 
-Old Colab demo:[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hustvl/4DGaussians/blob/master/4DGaussians.ipynb) (Thanks [camenduru](https://github.com/camenduru/4DGaussians-colab).)
+- `--motion-separation`
+- `--motion-gate-rot-scale`
+- `--static-deform-lambda`
+- `--motion-bin-lambda`
 
-Light Gaussian implementation: [This link](https://github.com/pablodawson/4DGaussians) (Thanks [pablodawson](https://github.com/pablodawson))
+The current cleaned codebase **does not** keep the earlier sparsity-only prototype that used `--motion-mask-lambda`.
 
+## Current Repository Scope
 
-## News
+This repository is currently organized around three workflows:
 
-2024.6.25: we clean the code and add an explanation of the parameters.
+1. **Baseline 4DGS training and rendering**
+2. **Motion-separation training and rendering**
+3. **Project analysis / reporting for the modified method**
 
-2024.3.25: Update guidance for hypernerf and dynerf dataset.
+The most relevant top-level files are:
 
-2024.03.04: We change the hyperparameters of the Neu3D dataset, corresponding to our paper.
+- [train.py](./train.py): training entry point
+- [render.py](./render.py): rendering entry point
+- [metrics.py](./metrics.py): quantitative evaluation
+- [MOTION_SEPARATION_COMMANDS.md](./MOTION_SEPARATION_COMMANDS.md): current one-line training/render/eval commands
+- [FINAL_PROJECT_REPORT.md](./FINAL_PROJECT_REPORT.md): project report
+- [ARCHITECTURE_FLOW_INPUT_TO_OUTPUT.md](./ARCHITECTURE_FLOW_INPUT_TO_OUTPUT.md): architecture explanation
 
-2024.02.28: Update SIBR viewer guidance.
+## Environment Setup
 
-2024.02.27: Accepted by CVPR 2024. We delete some logging settings for debugging, the corrected training time is only **8 mins** (20 mins before) in D-NeRF datasets and **30 mins** (1 hour before) in HyperNeRF datasets. The rendering quality is not affected.
+The environment assumptions are still close to upstream 4DGS.
 
-## Environmental Setups
-
-Please follow the [3D-GS](https://github.com/graphdeco-inria/gaussian-splatting) to install the relative packages.
+Typical setup:
 
 ```bash
-git clone https://github.com/hustvl/4DGaussians
-cd 4DGaussians
+git clone <this-repo>
+cd 4DGaussians_static_dynamic
 git submodule update --init --recursive
-conda create -n Gaussians4D python=3.7 
+
+conda create -n Gaussians4D python=3.7
 conda activate Gaussians4D
 
 pip install -r requirements.txt
@@ -52,271 +64,187 @@ pip install -e submodules/depth-diff-gaussian-rasterization
 pip install -e submodules/simple-knn
 ```
 
-In our environment, we use pytorch=1.13.1+cu116.
+The experiments in this repo were run with PyTorch `1.13.1+cu116`.
 
-## Data Preparation
+## Supported Data Layouts
 
-**For synthetic scenes:**
-The dataset provided in [D-NeRF](https://github.com/albertpumarola/D-NeRF) is used. You can download the dataset from [dropbox](https://www.dropbox.com/s/0bf6fl0ye2vz3vr/data.zip?dl=0).
+### 1. D-NeRF-style synthetic scenes
 
-**For real dynamic scenes:**
-The dataset provided in [HyperNeRF](https://github.com/google/hypernerf) is used. You can download scenes from [Hypernerf Dataset](https://github.com/google/hypernerf/releases/tag/v0.1) and organize them as [Nerfies](https://github.com/google/nerfies#datasets). 
+Examples:
 
-Meanwhile, [Plenoptic Dataset](https://github.com/facebookresearch/Neural_3D_Video) could be downloaded from their official websites. To save the memory, you should extract the frames of each video and then organize your dataset as follows.
+- `data/dnerf/bouncingballs`
+- `data/dnerf/jumpingjacks`
+- `data/dnerf/lego`
 
-```
-├── data
-│   | dnerf 
-│     ├── mutant
-│     ├── standup 
-│     ├── ...
-│   | hypernerf
-│     ├── interp
-│     ├── misc
-│     ├── virg
-│   | dynerf
-│     ├── cook_spinach
-│       ├── cam00
-│           ├── images
-│               ├── 0000.png
-│               ├── 0001.png
-│               ├── 0002.png
-│               ├── ...
-│       ├── cam01
-│           ├── images
-│               ├── 0000.png
-│               ├── 0001.png
-│               ├── ...
-│     ├── cut_roasted_beef
-|     ├── ...
-```
+These scenes use `transforms_train.json` / `transforms_test.json` style camera metadata.
 
-**For multipleviews scenes:**
-If you want to train your own dataset of multipleviews scenes, you can orginize your dataset as follows:
+### 2. HyperNeRF scenes
 
-```
-├── data
-|   | multipleview
-│     | (your dataset name) 
-│   	  | cam01
-|     		  ├── frame_00001.jpg
-│     		  ├── frame_00002.jpg
-│     		  ├── ...
-│   	  | cam02
-│     		  ├── frame_00001.jpg
-│     		  ├── frame_00002.jpg
-│     		  ├── ...
-│   	  | ...
-```
-After that, you can use the  `multipleviewprogress.sh` we provided to generate related data of poses and pointcloud.You can use it as follows:
+Examples:
+
+- `data/hypernerf/interp/chickchicken`
+- `data/hypernerf/virg/...`
+
+These require the scene data plus a COLMAP-generated or pregenerated point cloud such as `points3D_downsample2.ply`.
+
+### 3. Custom D-NeRF-style scenes
+
+The repo includes [scripts/make_dnerf_transforms.py](./scripts/make_dnerf_transforms.py), which can convert a `transforms.json` file into `transforms_train.json` and `transforms_test.json` while adding per-frame `time` values.
+
+Example:
+
 ```bash
-bash multipleviewprogress.sh (youe dataset name)
-```
-You need to ensure that the data folder is organized as follows after running multipleviewprogress.sh:
-```
-├── data
-|   | multipleview
-│     | (your dataset name) 
-│   	  | cam01
-|     		  ├── frame_00001.jpg
-│     		  ├── frame_00002.jpg
-│     		  ├── ...
-│   	  | cam02
-│     		  ├── frame_00001.jpg
-│     		  ├── frame_00002.jpg
-│     		  ├── ...
-│   	  | ...
-│   	  | sparse_
-│     		  ├── cameras.bin
-│     		  ├── images.bin
-│     		  ├── ...
-│   	  | points3D_multipleview.ply
-│   	  | poses_bounds_multipleview.npy
+python scripts/make_dnerf_transforms.py data/custom/M200 --time-step 0.5 --zero-base --hold 8
 ```
 
+This is useful when you have a single moving-camera video or a manually processed custom sequence and want to turn it into the Blender/D-NeRF-style format expected by this codebase.
 
 ## Training
 
-For training synthetic scenes such as `bouncingballs`, run
+### Baseline 4DGS
 
-```
-python train.py -s data/dnerf/bouncingballs --port 6017 --expname "dnerf/bouncingballs" --configs arguments/dnerf/bouncingballs.py 
-```
+Example:
 
-For training dynerf scenes such as `cut_roasted_beef`, run
-```python
-# First, extract the frames of each video.
-python scripts/preprocess_dynerf.py --datadir data/dynerf/cut_roasted_beef
-# Second, generate point clouds from input data.
-bash colmap.sh data/dynerf/cut_roasted_beef llff
-# Third, downsample the point clouds generated in the second step.
-python scripts/downsample_point.py data/dynerf/cut_roasted_beef/colmap/dense/workspace/fused.ply data/dynerf/cut_roasted_beef/points3D_downsample2.ply
-# Finally, train.
-python train.py -s data/dynerf/cut_roasted_beef --port 6017 --expname "dynerf/cut_roasted_beef" --configs arguments/dynerf/cut_roasted_beef.py 
-```
-For training hypernerf scenes such as `virg/broom`: Pregenerated point clouds by COLMAP are provided [here](https://drive.google.com/file/d/1fUHiSgimVjVQZ2OOzTFtz02E9EqCoWr5/view). Just download them and put them in to correspond folder, and you can skip the former two steps. Also, you can run the commands directly.
-
-```python
-# First, computing dense point clouds by COLMAP
-bash colmap.sh data/hypernerf/virg/broom2 hypernerf
-# Second, downsample the point clouds generated in the first step. 
-python scripts/downsample_point.py data/hypernerf/virg/broom2/colmap/dense/workspace/fused.ply data/hypernerf/virg/broom2/points3D_downsample2.ply
-# Finally, train.
-python train.py -s  data/hypernerf/virg/broom2/ --port 6017 --expname "hypernerf/broom2" --configs arguments/hypernerf/broom2.py 
+```bash
+python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_baseline --port 6017 --expname "bouncingballs_baseline" --configs arguments/dnerf/bouncingballs.py
 ```
 
-For training multipleviews scenes,you are supposed to build a configuration file named (you dataset name).py under "./arguments/mutipleview",after that,run
-```python
-python train.py -s  data/multipleview/(your dataset name) --port 6017 --expname "multipleview/(your dataset name)" --configs arguments/multipleview/(you dataset name).py 
+### Motion Separation
+
+Example:
+
+```bash
+python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 --port 6021 --expname "bouncingballs_motion_fixed_static1e-3_bin1e-3" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale --static-deform-lambda 0.001 --motion-bin-lambda 0.001
 ```
 
+Meaning of the motion-separation flags:
 
-For your custom datasets, install nerfstudio and follow their [COLMAP](https://colmap.github.io/) pipeline. You should install COLMAP at first, then:
+- `--motion-separation`  
+  Enable the motion-mask branch.
 
-```python
-pip install nerfstudio
-# computing camera poses by colmap pipeline
-ns-process-data images --data data/your-data --output-dir data/your-ns-data
-cp -r data/your-ns-data/images data/your-ns-data/colmap/images
-python train.py -s data/your-ns-data/colmap --port 6017 --expname "custom" --configs arguments/hypernerf/default.py 
-```
-You can customize your training config through the config files.
+- `--motion-gate-rot-scale`  
+  Also gate scale and rotation deformation with the same motion mask.
 
-## Checkpoint
+- `--static-deform-lambda`  
+  Penalize deformation in low-mask regions:
+  \[
+  \mathcal{L}_{\text{static}} = \frac{1}{N}\sum_i (1-m_i)\|\Delta \mu_i\|_2
+  \]
 
-Also, you can train your model with checkpoint.
+- `--motion-bin-lambda`  
+  Encourage masks toward \(0\) or \(1\):
+  \[
+  \mathcal{L}_{\text{bin}} = \frac{1}{N}\sum_i m_i(1-m_i)
+  \]
 
-```python
-python train.py -s data/dnerf/bouncingballs --port 6017 --expname "dnerf/bouncingballs" --configs arguments/dnerf/bouncingballs.py --checkpoint_iterations 200 # change it.
-```
-
-Then load checkpoint with:
-
-```python
-python train.py -s data/dnerf/bouncingballs --port 6017 --expname "dnerf/bouncingballs" --configs arguments/dnerf/bouncingballs.py --start_checkpoint "output/dnerf/bouncingballs/chkpnt_coarse_200.pth"
-# finestage: --start_checkpoint "output/dnerf/bouncingballs/chkpnt_fine_200.pth"
-```
+For more tested commands, see [MOTION_SEPARATION_COMMANDS.md](./MOTION_SEPARATION_COMMANDS.md).
 
 ## Rendering
 
-Run the following script to render the images.
+Example:
 
+```bash
+python render.py --model_path output/dnerf/bouncingballs_baseline --skip_train --configs arguments/dnerf/bouncingballs.py
 ```
-python render.py --model_path "output/dnerf/bouncingballs/"  --skip_train --configs arguments/dnerf/bouncingballs.py 
+
+For a motion-separation run:
+
+```bash
+python render.py --model_path output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 --skip_train --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale
 ```
+
+Notes:
+
+- `--skip_train` means "do not render the training split".
+- `render.py` can render `train`, `test`, and `video` splits depending on flags.
+- rendered outputs are written under the model directory, for example:
+  - `output/.../test/ours_20000/renders`
+  - `output/.../test/ours_20000/gt`
+  - `output/.../video/ours_20000/video_rgb.mp4`
 
 ## Evaluation
 
-You can just run the following script to evaluate the model.
-
-```
-python metrics.py --model_path "output/dnerf/bouncingballs/" 
-```
-
-
-## Viewer
-[Watch me](./docs/viewer_usage.md)
-## Scripts
-
-There are some helpful scripts, please feel free to use them.
-
-`export_perframe_3DGS.py`:
-get all 3D Gaussians point clouds at each timestamps.
-
-usage:
-
-```python
-python export_perframe_3DGS.py --iteration 14000 --configs arguments/dnerf/lego.py --model_path output/dnerf/lego 
-```
-
-You will a set of 3D Gaussians are saved in `output/dnerf/lego/gaussian_pertimestamp`.
-
-`weight_visualization.ipynb`:
-
-visualize the weight of Multi-resolution HexPlane module.
-
-`merge_many_4dgs.py`:
-merge your trained 4dgs.
-usage:
-
-```python
-export exp_name="dynerf"
-python merge_many_4dgs.py --model_path output/$exp_name/sear_steak
-```
-
-`colmap.sh`:
-generate point clouds from input data
+Example:
 
 ```bash
-bash colmap.sh data/hypernerf/virg/vrig-chicken hypernerf 
-bash colmap.sh data/dynerf/sear_steak llff
+python metrics.py -m output/dnerf/bouncingballs_baseline output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3
 ```
 
-**Blender** format seems doesn't work. Welcome to raise a pull request to fix it.
+The code reports:
 
-`downsample_point.py` :downsample generated point clouds by sfm.
+- PSNR
+- SSIM
+- LPIPS-VGG
+- LPIPS-Alex
+- MS-SSIM
+- D-SSIM
 
-```python
-python scripts/downsample_point.py data/dynerf/sear_steak/colmap/dense/workspace/fused.ply data/dynerf/sear_steak/points3D_downsample2.ply
+## Motion-Mask Diagnostics
+
+When motion separation is enabled, training also logs:
+
+- `motion_mask_stats.jsonl`
+- `motion_mask_colors.ply`
+- `motion_mask_last.pt`
+
+These are useful for inspecting whether the learned motion mask is meaningful.
+
+Common diagnostics include:
+
+- mask mean / standard deviation
+- dynamic fraction (`m > 0.5`)
+- softer thresholds such as fraction `m > 0.4`
+- static-weighted deformation magnitude
+- binarization diagnostic
+
+## HyperNeRF Notes
+
+For HyperNeRF scenes in this repo:
+
+1. place the scene under `data/hypernerf/...`
+2. ensure a point cloud such as `points3D_downsample2.ply` is available
+3. use `arguments/hypernerf/default.py` or a scene-specific config
+
+Example baseline:
+
+```bash
+python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_baseline_bs1 --port 6031 --expname "hypernerf/interp/chickchicken_baseline_bs1" --configs arguments/hypernerf/default.py --batch-size 1 --densify-until-iter 6000
 ```
 
-In my paper, I always use `colmap.sh` to generate dense point clouds and downsample it to less than 40000 points.
+Example motion-separation run:
 
-Here are some codes maybe useful but never adopted in my paper, you can also try it.
-
-## Awesome Concurrent/Related Works
-
-Welcome to also check out these awesome concurrent/related works, including but not limited to
-
-[Deformable 3D Gaussians for High-Fidelity Monocular Dynamic Scene Reconstruction](https://ingra14m.github.io/Deformable-Gaussians/)
-
-[SC-GS: Sparse-Controlled Gaussian Splatting for Editable Dynamic Scenes](https://yihua7.github.io/SC-GS-web/)
-
-[MD-Splatting: Learning Metric Deformation from 4D Gaussians in Highly Deformable Scenes](https://md-splatting.github.io/)
-
-[4DGen: Grounded 4D Content Generation with Spatial-temporal Consistency](https://vita-group.github.io/4DGen/)
-
-[Diffusion4D: Fast Spatial-temporal Consistent 4D Generation via Video Diffusion Models](https://github.com/VITA-Group/Diffusion4D)
-
-[DreamGaussian4D: Generative 4D Gaussian Splatting](https://github.com/jiawei-ren/dreamgaussian4d)
-
-[EndoGaussian: Real-time Gaussian Splatting for Dynamic Endoscopic Scene Reconstruction](https://github.com/yifliu3/EndoGaussian)
-
-[EndoGS: Deformable Endoscopic Tissues Reconstruction with Gaussian Splatting](https://github.com/HKU-MedAI/EndoGS)
-
-[Endo-4DGS: Endoscopic Monocular Scene Reconstruction with 4D Gaussian Splatting](https://arxiv.org/abs/2401.16416)
-
-
-
-## Contributions
-
-**This project is still under development. Please feel free to raise issues or submit pull requests to contribute to our codebase.**
-
-
-Some source code of ours is borrowed from [3DGS](https://github.com/graphdeco-inria/gaussian-splatting), [K-planes](https://github.com/Giodiro/kplanes_nerfstudio), [HexPlane](https://github.com/Caoang327/HexPlane), [TiNeuVox](https://github.com/hustvl/TiNeuVox), [Depth-Rasterization](https://github.com/ingra14m/depth-diff-gaussian-rasterization). We sincerely appreciate the excellent works of these authors.
-
-## Acknowledgement
-
-We would like to express our sincere gratitude to [@zhouzhenghong-gt](https://github.com/zhouzhenghong-gt/) for his revisions to our code and discussions on the content of our paper.
-
-## Citation
-
-Some insights about neural voxel grids and dynamic scenes reconstruction originate from [TiNeuVox](https://github.com/hustvl/TiNeuVox). If you find this repository/work helpful in your research, welcome to cite these papers and give a ⭐.
-
+```bash
+python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1 --port 6032 --expname "hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1" --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale --static-deform-lambda 0.002 --motion-bin-lambda 0.001 --batch-size 1 --densify-until-iter 6000
 ```
-@InProceedings{Wu_2024_CVPR,
-    author    = {Wu, Guanjun and Yi, Taoran and Fang, Jiemin and Xie, Lingxi and Zhang, Xiaopeng and Wei, Wei and Liu, Wenyu and Tian, Qi and Wang, Xinggang},
-    title     = {4D Gaussian Splatting for Real-Time Dynamic Scene Rendering},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month     = {June},
-    year      = {2024},
-    pages     = {20310-20320}
-}
 
-@inproceedings{TiNeuVox,
-  author = {Fang, Jiemin and Yi, Taoran and Wang, Xinggang and Xie, Lingxi and Zhang, Xiaopeng and Liu, Wenyu and Nie\ss{}ner, Matthias and Tian, Qi},
-  title = {Fast Dynamic Radiance Fields with Time-Aware Neural Voxels},
-  year = {2022},
-  booktitle = {SIGGRAPH Asia 2022 Conference Papers}
-}
-```
+## Custom Scene Notes
+
+This repo can support custom scenes, but the required preprocessing depends on the format:
+
+- **Blender/D-NeRF style**: use `transforms_train.json` / `transforms_test.json`
+- **COLMAP / HyperNeRF-style**: use reconstructed camera poses and point clouds
+
+For custom scenes with a moving camera and frame timestamps, the easiest path in this fork is usually:
+
+1. prepare a `transforms.json`
+2. generate `transforms_train.json` / `transforms_test.json` with `scripts/make_dnerf_transforms.py`
+3. train with a D-NeRF-style config
+
+## Viewer and Auxiliary Tools
+
+- Viewer usage: [docs/viewer_usage.md](./docs/viewer_usage.md)
+- `export_perframe_3DGS.py`: export Gaussian point clouds at each timestamp
+- `merge_many_4dgs.py`: merge trained 4DGS outputs
+- `colmap.sh`: generate point clouds from input data
+
+## Current Project Documentation
+
+If you are trying to understand the modified code rather than just run it, start with:
+
+1. [FINAL_PROJECT_REPORT.md](./FINAL_PROJECT_REPORT.md)
+2. [ARCHITECTURE_FLOW_INPUT_TO_OUTPUT.md](./ARCHITECTURE_FLOW_INPUT_TO_OUTPUT.md)
+3. [MOTION_SEPARATION_COMMANDS.md](./MOTION_SEPARATION_COMMANDS.md)
+
+## Acknowledgment
+
+This repository is built on top of the original 4D Gaussian Splatting project and its dependencies. The upstream authors deserve full credit for the baseline 4DGS architecture and release. This fork focuses on a motion-separation extension and related project documentation.
