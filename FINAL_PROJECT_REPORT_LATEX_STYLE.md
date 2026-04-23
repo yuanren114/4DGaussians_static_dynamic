@@ -211,13 +211,13 @@ These results show a scene-level tradeoff. The setting $\lambda_{\text{static}}=
 
 Mask diagnostics:
 
-| Method | Final mean | Final std | Final dynamic fraction | Final fraction $m>0.4$ | Qualitative mask |
-|---|---:|---:|---:|---:|---|
-| Early no-sparsity mask | 0.2475 | 0.0641 | 0.0001 | not logged | nearly uniform soft mask |
-| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.1851 | 0.1904 | 0.0117 | 0.2162 | moving balls show purple regions |
-| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.2179 | 0.2487 | 0.2604 | 0.3879 | clearest soft separation among stable settings |
-| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$) | 0.1400 | 0.2137 | 0.0487 | 0.2615 | cleaner but more conservative mask |
-| Over-regularized variant | 0.9986 | 0.0022 | 1.0000 | 1.0000 | all-dynamic collapse |
+| Method | Final mean | Final std | Final dynamic fraction | Final fraction $m>0.4$ | Static deformation | Binarization |
+|---|---:|---:|---:|---:|---:|---:|
+| Early no-sparsity mask | 0.2475 | 0.0641 | 0.0001 | not logged | not logged | not logged |
+| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.1851 | 0.1904 | 0.0117 | 0.2162 | 0.0934 | 0.1146 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.2179 | 0.2487 | 0.2604 | 0.3879 | 0.0523 | 0.1086 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$) | 0.1400 | 0.2137 | 0.0487 | 0.2615 | 0.0499 | 0.0747 |
+| Over-regularized variant ($\lambda_{\text{static}}=10^{-2}, \lambda_{\text{bin}}=10^{-3}$) | 0.9986 | 0.0022 | 1.0000 | 1.0000 | 0.0002 | 0.0014 |
 
 Thus, best reconstruction and best mask separability are not the same operating point for this scene.
 
