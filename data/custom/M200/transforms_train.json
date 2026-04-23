@@ -17,7 +17,7 @@
   "aabb_scale": 16,
   "frames": [
     {
-      "file_path": "./images/0016.jpg",
+      "file_path": "./images/0016.png",
       "sharpness": 34.918818983223005,
       "transform_matrix": [
         [
@@ -47,7 +47,7 @@
       ]
     },
     {
-      "file_path": "./images/0017.jpg",
+      "file_path": "./images/0017.png",
       "sharpness": 36.36588749406862,
       "transform_matrix": [
         [
@@ -77,7 +77,7 @@
       ]
     },
     {
-      "file_path": "./images/0014.jpg",
+      "file_path": "./images/0014.png",
       "sharpness": 76.05077554752697,
       "transform_matrix": [
         [
@@ -107,7 +107,7 @@
       ]
     },
     {
-      "file_path": "./images/0013.jpg",
+      "file_path": "./images/0013.png",
       "sharpness": 77.15190299657307,
       "transform_matrix": [
         [
@@ -137,7 +137,7 @@
       ]
     },
     {
-      "file_path": "./images/0015.jpg",
+      "file_path": "./images/0015.png",
       "sharpness": 39.14491775418203,
       "transform_matrix": [
         [
@@ -167,7 +167,7 @@
       ]
     },
     {
-      "file_path": "./images/0007.jpg",
+      "file_path": "./images/0007.png",
       "sharpness": 36.85130561716813,
       "transform_matrix": [
         [
@@ -197,7 +197,7 @@
       ]
     },
     {
-      "file_path": "./images/0008.jpg",
+      "file_path": "./images/0008.png",
       "sharpness": 36.958455067091556,
       "transform_matrix": [
         [
@@ -227,7 +227,7 @@
       ]
     },
     {
-      "file_path": "./images/0001.jpg",
+      "file_path": "./images/0001.png",
       "sharpness": 111.92524887576562,
       "transform_matrix": [
         [
@@ -257,7 +257,7 @@
       ]
     },
     {
-      "file_path": "./images/0003.jpg",
+      "file_path": "./images/0003.png",
       "sharpness": 54.70114039107935,
       "transform_matrix": [
         [
@@ -287,7 +287,7 @@
       ]
     },
     {
-      "file_path": "./images/0012.jpg",
+      "file_path": "./images/0012.png",
       "sharpness": 98.16002718598189,
       "transform_matrix": [
         [
@@ -317,7 +317,7 @@
       ]
     },
     {
-      "file_path": "./images/0004.jpg",
+      "file_path": "./images/0004.png",
       "sharpness": 50.12323493143826,
       "transform_matrix": [
         [
@@ -347,7 +347,7 @@
       ]
     },
     {
-      "file_path": "./images/0010.jpg",
+      "file_path": "./images/0010.png",
       "sharpness": 70.73548317290077,
       "transform_matrix": [
         [
@@ -377,7 +377,7 @@
       ]
     },
     {
-      "file_path": "./images/0006.jpg",
+      "file_path": "./images/0006.png",
       "sharpness": 49.018523248236136,
       "transform_matrix": [
         [
@@ -407,7 +407,7 @@
       ]
     },
     {
-      "file_path": "./images/0005.jpg",
+      "file_path": "./images/0005.png",
       "sharpness": 41.6951886487968,
       "transform_matrix": [
         [
@@ -437,7 +437,7 @@
       ]
     },
     {
-      "file_path": "./images/0009.jpg",
+      "file_path": "./images/0009.png",
       "sharpness": 60.5393800173894,
       "transform_matrix": [
         [
@@ -467,7 +467,7 @@
       ]
     },
     {
-      "file_path": "./images/0018.jpg",
+      "file_path": "./images/0018.png",
       "sharpness": 33.6862027253423,
       "transform_matrix": [
         [
@@ -497,7 +497,7 @@
       ]
     },
     {
-      "file_path": "./images/0019.jpg",
+      "file_path": "./images/0019.png",
       "sharpness": 28.263453393035682,
       "transform_matrix": [
         [
@@ -527,7 +527,7 @@
       ]
     },
     {
-      "file_path": "./images/0020.jpg",
+      "file_path": "./images/0020.png",
       "sharpness": 33.18273929012499,
       "transform_matrix": [
         [
@@ -557,7 +557,7 @@
       ]
     },
     {
-      "file_path": "./images/0011.jpg",
+      "file_path": "./images/0011.png",
       "sharpness": 99.9120490197039,
       "transform_matrix": [
         [
@@ -587,7 +587,7 @@
       ]
     },
     {
-      "file_path": "./images/0022.jpg",
+      "file_path": "./images/0022.png",
       "sharpness": 50.230393967634825,
       "transform_matrix": [
         [
@@ -617,7 +617,7 @@
       ]
     },
     {
-      "file_path": "./images/0024.jpg",
+      "file_path": "./images/0024.png",
       "sharpness": 28.55584504613725,
       "transform_matrix": [
         [
@@ -647,7 +647,7 @@
       ]
     },
     {
-      "file_path": "./images/0025.jpg",
+      "file_path": "./images/0025.png",
       "sharpness": 30.30103874096603,
       "transform_matrix": [
         [
@@ -677,7 +677,7 @@
       ]
     },
     {
-      "file_path": "./images/0026.jpg",
+      "file_path": "./images/0026.png",
       "sharpness": 34.82706618117785,
       "transform_matrix": [
         [
@@ -707,7 +707,7 @@
       ]
     },
     {
-      "file_path": "./images/0030.jpg",
+      "file_path": "./images/0030.png",
       "sharpness": 40.129664390744985,
       "transform_matrix": [
         [
@@ -737,7 +737,7 @@
       ]
     },
     {
-      "file_path": "./images/0027.jpg",
+      "file_path": "./images/0027.png",
       "sharpness": 42.9338219367871,
       "transform_matrix": [
         [
@@ -767,7 +767,7 @@
       ]
     },
     {
-      "file_path": "./images/0031.jpg",
+      "file_path": "./images/0031.png",
       "sharpness": 37.13482339792502,
       "transform_matrix": [
         [
@@ -797,7 +797,7 @@
       ]
     },
     {
-      "file_path": "./images/0029.jpg",
+      "file_path": "./images/0029.png",
       "sharpness": 53.64771292524355,
       "transform_matrix": [
         [
@@ -827,7 +827,7 @@
       ]
     },
     {
-      "file_path": "./images/0028.jpg",
+      "file_path": "./images/0028.png",
       "sharpness": 44.25699296112385,
       "transform_matrix": [
         [
@@ -857,7 +857,7 @@
       ]
     },
     {
-      "file_path": "./images/0033.jpg",
+      "file_path": "./images/0033.png",
       "sharpness": 44.879165827029,
       "transform_matrix": [
         [
@@ -887,7 +887,7 @@
       ]
     },
     {
-      "file_path": "./images/0034.jpg",
+      "file_path": "./images/0034.png",
       "sharpness": 39.75933566945084,
       "transform_matrix": [
         [
@@ -917,7 +917,7 @@
       ]
     },
     {
-      "file_path": "./images/0035.jpg",
+      "file_path": "./images/0035.png",
       "sharpness": 42.562879009612715,
       "transform_matrix": [
         [
@@ -947,7 +947,7 @@
       ]
     },
     {
-      "file_path": "./images/0032.jpg",
+      "file_path": "./images/0032.png",
       "sharpness": 51.19678965257992,
       "transform_matrix": [
         [
@@ -977,7 +977,7 @@
       ]
     },
     {
-      "file_path": "./images/0036.jpg",
+      "file_path": "./images/0036.png",
       "sharpness": 38.03596677094909,
       "transform_matrix": [
         [
@@ -1007,7 +1007,7 @@
       ]
     },
     {
-      "file_path": "./images/0037.jpg",
+      "file_path": "./images/0037.png",
       "sharpness": 53.07478831992898,
       "transform_matrix": [
         [
@@ -1037,7 +1037,7 @@
       ]
     },
     {
-      "file_path": "./images/0039.jpg",
+      "file_path": "./images/0039.png",
       "sharpness": 34.04259951868986,
       "transform_matrix": [
         [
@@ -1067,7 +1067,7 @@
       ]
     },
     {
-      "file_path": "./images/0038.jpg",
+      "file_path": "./images/0038.png",
       "sharpness": 59.03700970419427,
       "transform_matrix": [
         [
@@ -1097,7 +1097,7 @@
       ]
     },
     {
-      "file_path": "./images/0040.jpg",
+      "file_path": "./images/0040.png",
       "sharpness": 32.66017798461176,
       "transform_matrix": [
         [
@@ -1127,7 +1127,7 @@
       ]
     },
     {
-      "file_path": "./images/0041.jpg",
+      "file_path": "./images/0041.png",
       "sharpness": 48.99138297526828,
       "transform_matrix": [
         [
@@ -1157,7 +1157,7 @@
       ]
     },
     {
-      "file_path": "./images/0043.jpg",
+      "file_path": "./images/0043.png",
       "sharpness": 46.62368114190083,
       "transform_matrix": [
         [
@@ -1187,7 +1187,7 @@
       ]
     },
     {
-      "file_path": "./images/0044.jpg",
+      "file_path": "./images/0044.png",
       "sharpness": 26.19326805133785,
       "transform_matrix": [
         [
@@ -1217,7 +1217,7 @@
       ]
     },
     {
-      "file_path": "./images/0045.jpg",
+      "file_path": "./images/0045.png",
       "sharpness": 31.290356425523598,
       "transform_matrix": [
         [
@@ -1247,7 +1247,7 @@
       ]
     },
     {
-      "file_path": "./images/0046.jpg",
+      "file_path": "./images/0046.png",
       "sharpness": 30.933848308392644,
       "transform_matrix": [
         [
@@ -1277,7 +1277,7 @@
       ]
     },
     {
-      "file_path": "./images/0048.jpg",
+      "file_path": "./images/0048.png",
       "sharpness": 17.37414449096569,
       "transform_matrix": [
         [
@@ -1307,7 +1307,7 @@
       ]
     },
     {
-      "file_path": "./images/0049.jpg",
+      "file_path": "./images/0049.png",
       "sharpness": 16.174677875984084,
       "transform_matrix": [
         [
@@ -1337,7 +1337,7 @@
       ]
     },
     {
-      "file_path": "./images/0050.jpg",
+      "file_path": "./images/0050.png",
       "sharpness": 14.624768633616448,
       "transform_matrix": [
         [
@@ -1367,7 +1367,7 @@
       ]
     },
     {
-      "file_path": "./images/0052.jpg",
+      "file_path": "./images/0052.png",
       "sharpness": 11.501076388649345,
       "transform_matrix": [
         [
@@ -1397,7 +1397,7 @@
       ]
     },
     {
-      "file_path": "./images/0047.jpg",
+      "file_path": "./images/0047.png",
       "sharpness": 27.98224187486485,
       "transform_matrix": [
         [
@@ -1427,7 +1427,7 @@
       ]
     },
     {
-      "file_path": "./images/0053.jpg",
+      "file_path": "./images/0053.png",
       "sharpness": 11.951304802219925,
       "transform_matrix": [
         [
@@ -1457,7 +1457,7 @@
       ]
     },
     {
-      "file_path": "./images/0051.jpg",
+      "file_path": "./images/0051.png",
       "sharpness": 14.32283048785882,
       "transform_matrix": [
         [
@@ -1487,7 +1487,7 @@
       ]
     },
     {
-      "file_path": "./images/0054.jpg",
+      "file_path": "./images/0054.png",
       "sharpness": 15.12162189997003,
       "transform_matrix": [
         [
@@ -1517,7 +1517,7 @@
       ]
     },
     {
-      "file_path": "./images/0055.jpg",
+      "file_path": "./images/0055.png",
       "sharpness": 22.029252002235147,
       "transform_matrix": [
         [
@@ -1547,7 +1547,7 @@
       ]
     },
     {
-      "file_path": "./images/0056.jpg",
+      "file_path": "./images/0056.png",
       "sharpness": 41.529694543198914,
       "transform_matrix": [
         [
@@ -1577,7 +1577,7 @@
       ]
     },
     {
-      "file_path": "./images/0057.jpg",
+      "file_path": "./images/0057.png",
       "sharpness": 33.34996025281665,
       "transform_matrix": [
         [
@@ -1607,7 +1607,7 @@
       ]
     },
     {
-      "file_path": "./images/0060.jpg",
+      "file_path": "./images/0060.png",
       "sharpness": 30.133237947438296,
       "transform_matrix": [
         [
@@ -1637,7 +1637,7 @@
       ]
     },
     {
-      "file_path": "./images/0061.jpg",
+      "file_path": "./images/0061.png",
       "sharpness": 29.322240118346386,
       "transform_matrix": [
         [
@@ -1667,7 +1667,7 @@
       ]
     },
     {
-      "file_path": "./images/0059.jpg",
+      "file_path": "./images/0059.png",
       "sharpness": 30.622056951156175,
       "transform_matrix": [
         [
@@ -1697,7 +1697,7 @@
       ]
     },
     {
-      "file_path": "./images/0058.jpg",
+      "file_path": "./images/0058.png",
       "sharpness": 50.31236695877383,
       "transform_matrix": [
         [
@@ -1727,7 +1727,7 @@
       ]
     },
     {
-      "file_path": "./images/0062.jpg",
+      "file_path": "./images/0062.png",
       "sharpness": 32.82125290557292,
       "transform_matrix": [
         [
@@ -1757,7 +1757,7 @@
       ]
     },
     {
-      "file_path": "./images/0065.jpg",
+      "file_path": "./images/0065.png",
       "sharpness": 91.94282627375856,
       "transform_matrix": [
         [
@@ -1787,7 +1787,7 @@
       ]
     },
     {
-      "file_path": "./images/0063.jpg",
+      "file_path": "./images/0063.png",
       "sharpness": 54.59093665348989,
       "transform_matrix": [
         [
@@ -1817,7 +1817,7 @@
       ]
     },
     {
-      "file_path": "./images/0064.jpg",
+      "file_path": "./images/0064.png",
       "sharpness": 47.96779700236061,
       "transform_matrix": [
         [
