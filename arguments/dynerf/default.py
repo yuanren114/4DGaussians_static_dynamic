@@ -14,9 +14,7 @@ ModelHiddenParams = dict(
     no_do=False,
     no_dshs=False,
     no_ds=False,
-    empty_voxel=False,
-    render_process=False,
-    static_mlp=False
+    render_process=False
 
 )
 OptimizationParams = dict(

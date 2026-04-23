@@ -79,14 +79,10 @@ class PipelineParams(ParamGroup):
         super().__init__(parser, "Pipeline Parameters")
 class ModelHiddenParams(ParamGroup):
     def __init__(self, parser):
-        self.net_width = 64 # width of deformation MLP, larger will increase the rendering quality and decrase the training/rendering speed.
-        self.timebase_pe = 4 # useless
-        self.defor_depth = 1 # depth of deformation MLP, larger will increase the rendering quality and decrase the training/rendering speed.
-        self.posebase_pe = 10 # useless
-        self.scale_rotation_pe = 2 # useless
-        self.opacity_pe = 2 # useless
-        self.timenet_width = 64 # useless
-        self.timenet_output = 32 # useless
+        self.net_width = 64 # width of the deformation MLP
+        self.defor_depth = 1 # depth of the deformation MLP
+        self.posebase_pe = 10 # positional encoding frequency count for point coordinates
+        self.scale_rotation_pe = 2 # positional encoding frequency count for scale and rotation inputs
         self.bounds = 1.6 
         self.plane_tv_weight = 0.0001 # TV loss of spatial grid
         self.time_smoothness_weight = 0.01 # TV loss of temporal grid
@@ -104,12 +100,7 @@ class ModelHiddenParams(ParamGroup):
         self.no_dr=False # cancel the deformation of Gaussians' rotations
         self.no_do=True # cancel the deformation of Gaussians' opacity
         self.no_dshs=True # cancel the deformation of SH colors.
-        self.empty_voxel=False # useless
-        self.grid_pe=0 # useless, I was trying to add positional encoding to hexplane's features
-        self.static_mlp=False # useless
-        self.apply_rotation=False # useless
         self.motion_separation=False # enable lightweight static/dynamic motion gate
-        self.motion_mask_lambda=0.0 # optional sparsity regularizer weight for the motion gate
         self.motion_gate_rot_scale=False # optionally gate scale and rotation deltas too
         self.static_deform_lambda=0.0 # penalize deformation in low-motion-mask regions
         self.motion_bin_lambda=0.0 # encourage motion mask values toward 0 or 1
@@ -140,7 +131,6 @@ class OptimizationParams(ParamGroup):
         self.rotation_lr = 0.001
         self.percent_dense = 0.01
         self.lambda_dssim = 0
-        self.lambda_lpips = 0
         self.weight_constraint_init= 1
         self.weight_constraint_after = 0.2
         self.weight_decay_iteration = 5000

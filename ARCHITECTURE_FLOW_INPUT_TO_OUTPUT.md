@@ -553,7 +553,7 @@ Code:
 motion_mask.mean()
 ```
 
-This term is controlled by `--motion-mask-lambda`. In the later experiments, this was usually set to `0`, so it did not affect training.
+This term belonged to an early prototype and is no longer part of the cleaned current training path.
 
 The binarization term is:
 

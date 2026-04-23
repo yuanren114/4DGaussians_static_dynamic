@@ -258,11 +258,6 @@ class GaussianModel:
         if not hasattr(self._deformation, "get_last_dx"):
             return None
         return self._deformation.get_last_dx()
-    def motion_mask_loss(self):
-        motion_mask = self.get_last_motion_mask()
-        if motion_mask is None:
-            return None
-        return motion_mask.mean()
     def motion_binarization_loss(self):
         motion_mask = self.get_last_motion_mask()
         if motion_mask is None:

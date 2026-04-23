@@ -185,7 +185,7 @@ An earlier prototype also tested a simple mask-mean penalty
 \mathcal{L}_{\text{mask}}=\frac{1}{N}\sum_i m_i(t),
 \]
 
-weighted by `motion_mask_lambda`. This term simply pushes the average mask value downward, so it acts as a crude sparsity prior on mask activation. However, it did not produce useful static-dynamic separation and is not part of the final method reported in this project.
+weighted by a separate coefficient in the early prototype. This term simply pushes the average mask value downward, so it acts as a crude sparsity prior on mask activation. However, it did not produce useful static-dynamic separation and is not part of the final method reported in this project.
 
 ### 4.5 Why These Losses Are Needed
 

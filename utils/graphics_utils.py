@@ -76,36 +76,6 @@ def fov2focal(fov, pixels):
 def focal2fov(focal, pixels):
     return 2*math.atan(pixels/(2*focal))
 
-def apply_rotation(q1, q2):
-    """
-    Applies a rotation to a quaternion.
-    
-    Parameters:
-    q1 (Tensor): The original quaternion.
-    q2 (Tensor): The rotation quaternion to be applied.
-    
-    Returns:
-    Tensor: The resulting quaternion after applying the rotation.
-    """
-    # Extract components for readability
-    w1, x1, y1, z1 = q1
-    w2, x2, y2, z2 = q2
-
-    # Compute the product of the two quaternions
-    w3 = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
-    x3 = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
-    y3 = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
-    z3 = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-    
-    # Combine the components into a new quaternion tensor
-    q3 = torch.tensor([w3, x3, y3, z3])
-
-    # Normalize the resulting quaternion
-    q3_normalized = q3 / torch.norm(q3)
-    
-    return q3_normalized
-
-
 def batch_quaternion_multiply(q1, q2):
     """
     Multiply batches of quaternions.

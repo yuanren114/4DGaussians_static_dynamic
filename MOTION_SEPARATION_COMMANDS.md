@@ -2,6 +2,8 @@
 
 All commands below are one-line commands for the Linux cluster shell. Use `/` path separators, not Windows `\`.
 
+This file keeps only the currently supported command paths. Early sparsity-only experiments using `--motion-mask-lambda` were removed from the codebase during cleanup and are intentionally not listed here.
+
 ## Baseline Experiments
 
 ### Lego baseline train
@@ -28,47 +30,9 @@ python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingba
 python render.py --model_path output/dnerf/bouncingballs_baseline --skip_train --configs arguments/dnerf/bouncingballs.py
 ```
 
-## Current Soft Motion Gate Experiments
+## Motion Gate Experiments
 
-### Lego current motion gate with sparsity train
-
-```bash
-python train.py -s data/dnerf/lego --model_path output/dnerf/lego_motion_lam1e-3 --port 6018 --expname "lego_motion_lam1e-3" --configs arguments/dnerf/lego.py --motion-separation --motion-mask-lambda 0.001
-```
-
-### Lego current motion gate with sparsity render
-
-```bash
-python render.py --model_path output/dnerf/lego_motion_lam1e-3 --skip_train --configs arguments/dnerf/lego.py --motion-separation
-```
-
-### Lego current motion gate without sparsity train
-
-```bash
-python train.py -s data/dnerf/lego --model_path output/dnerf/lego_motion_noreg --port 6019 --expname "lego_motion_noreg" --configs arguments/dnerf/lego.py --motion-separation --motion-mask-lambda 0
-```
-
-### Lego current motion gate without sparsity render
-
-```bash
-python render.py --model_path output/dnerf/lego_motion_noreg --skip_train --configs arguments/dnerf/lego.py --motion-separation
-```
-
-### Bouncingballs current motion gate without sparsity train
-
-```bash
-python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_noreg --port 6020 --expname "bouncingballs_motion_noreg" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-mask-lambda 0
-```
-
-### Bouncingballs current motion gate without sparsity render
-
-```bash
-python render.py --model_path output/dnerf/bouncingballs_motion_noreg --skip_train --configs arguments/dnerf/bouncingballs.py --motion-separation
-```
-
-## Fixed Motion Gate Experiments
-
-These commands use the new losses added in this codebase:
+These commands use the current motion-separation losses:
 
 - `--static-deform-lambda`: penalizes `(1 - mask) * ||dx||`, so low-mask Gaussians are discouraged from moving.
 - `--motion-bin-lambda`: penalizes `mask * (1 - mask)`, encouraging masks to move toward 0 or 1.
@@ -77,7 +41,7 @@ These commands use the new losses added in this codebase:
 ### Bouncingballs fixed motion gate conservative train
 
 ```bash
-python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 --port 6021 --expname "bouncingballs_motion_fixed_static1e-3_bin1e-3" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.001 --motion-bin-lambda 0.001
+python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 --port 6021 --expname "bouncingballs_motion_fixed_static1e-3_bin1e-3" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale --static-deform-lambda 0.001 --motion-bin-lambda 0.001
 ```
 
 ### Bouncingballs fixed motion gate conservative render
@@ -89,7 +53,7 @@ python render.py --model_path output/dnerf/bouncingballs_motion_fixed_static1e-3
 ### Bouncingballs fixed motion gate stronger static penalty train
 
 ```bash
-python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_fixed_static1e-2_bin1e-3 --port 6022 --expname "bouncingballs_motion_fixed_static1e-2_bin1e-3" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.01 --motion-bin-lambda 0.001
+python train.py -s data/dnerf/bouncingballs --model_path output/dnerf/bouncingballs_motion_fixed_static1e-2_bin1e-3 --port 6022 --expname "bouncingballs_motion_fixed_static1e-2_bin1e-3" --configs arguments/dnerf/bouncingballs.py --motion-separation --motion-gate-rot-scale --static-deform-lambda 0.01 --motion-bin-lambda 0.001
 ```
 
 ### Bouncingballs fixed motion gate stronger static penalty render
@@ -101,7 +65,7 @@ python render.py --model_path output/dnerf/bouncingballs_motion_fixed_static1e-2
 ### Lego fixed motion gate conservative train
 
 ```bash
-python train.py -s data/dnerf/lego --model_path output/dnerf/lego_motion_fixed_static1e-3_bin1e-3 --port 6023 --expname "lego_motion_fixed_static1e-3_bin1e-3" --configs arguments/dnerf/lego.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.001 --motion-bin-lambda 0.001
+python train.py -s data/dnerf/lego --model_path output/dnerf/lego_motion_fixed_static1e-3_bin1e-3 --port 6023 --expname "lego_motion_fixed_static1e-3_bin1e-3" --configs arguments/dnerf/lego.py --motion-separation --motion-gate-rot-scale --static-deform-lambda 0.001 --motion-bin-lambda 0.001
 ```
 
 ### Lego fixed motion gate conservative render
@@ -112,22 +76,16 @@ python render.py --model_path output/dnerf/lego_motion_fixed_static1e-3_bin1e-3 
 
 ## Metrics Commands
 
-### Compare Lego baseline, old motion, no-reg motion, and fixed motion
+### Compare Bouncingballs baseline and current motion setting
 
 ```bash
-python metrics.py -m output/dnerf/lego_baseline output/dnerf/lego_motion_lam1e-3 output/dnerf/lego_motion_noreg output/dnerf/lego_motion_fixed_static1e-3_bin1e-3
-```
-
-### Compare Bouncingballs baseline, old no-reg motion, and fixed conservative motion
-
-```bash
-python metrics.py -m output/dnerf/bouncingballs_baseline output/dnerf/bouncingballs_motion_noreg output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3
+python metrics.py -m output/dnerf/bouncingballs_baseline output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3
 ```
 
 ### Compare Bouncingballs fixed ablations
 
 ```bash
-python metrics.py -m output/dnerf/bouncingballs_baseline output/dnerf/bouncingballs_motion_noreg output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 output/dnerf/bouncingballs_motion_fixed_static1e-2_bin1e-3
+python metrics.py -m output/dnerf/bouncingballs_baseline output/dnerf/bouncingballs_motion_fixed_static1e-3_bin1e-3 output/dnerf/bouncingballs_motion_fixed_static1e-2_bin1e-3
 ```
 
 ## Mask Diagnostics
@@ -173,7 +131,7 @@ python render.py --model_path output/hypernerf/interp/chickchicken_baseline_bs1 
 ### HyperNeRF chickchicken motion train (`static=2e-3`, `bin=1e-3`)
 
 ```bash
-python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1 --port 6032 --expname "hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1" --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale --motion-mask-lambda 0 --static-deform-lambda 0.002 --motion-bin-lambda 0.001 --batch-size 1 --densify-until-iter 6000
+python train.py -s data/hypernerf/interp/chickchicken --model_path output/hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1 --port 6032 --expname "hypernerf/interp/chickchicken_motion_fixed_static2e-3_bin1e-3_bs1" --configs arguments/hypernerf/default.py --motion-separation --motion-gate-rot-scale --static-deform-lambda 0.002 --motion-bin-lambda 0.001 --batch-size 1 --densify-until-iter 6000
 ```
 
 ### HyperNeRF chickchicken motion render (`static=2e-3`, `bin=1e-3`)
@@ -229,7 +187,6 @@ python metrics.py -m output/custom/M200_baseline
 ## Suggested Order
 
 1. Run `bouncingballs_baseline`.
-2. Run `bouncingballs_motion_noreg`.
-3. Run `bouncingballs_motion_fixed_static1e-3_bin1e-3`.
-4. If the mask is still too soft, run `bouncingballs_motion_fixed_static1e-2_bin1e-3`.
-5. Use Lego as a secondary discussion scene because its motion is smaller and slower.
+2. Run `bouncingballs_motion_fixed_static1e-3_bin1e-3`.
+3. If the mask is still too soft, run `bouncingballs_motion_fixed_static1e-2_bin1e-3`.
+4. Use Lego as a secondary discussion scene because its motion is smaller and slower.
