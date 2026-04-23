@@ -179,13 +179,13 @@ Here:
 - \(\lambda_{\text{bin}}\) is the binarization weight,
 - \(\lambda_{\text{static}}\) is the static-deformation weight.
 
-An earlier prototype also tested a sparsity-style loss
+An earlier prototype also tested a simple mask-mean penalty
 
 \[
 \mathcal{L}_{\text{mask}}=\frac{1}{N}\sum_i m_i(t),
 \]
 
-weighted by `motion_mask_lambda`. However, this term did not produce useful static-dynamic separation and is not the main component of the final method.
+weighted by `motion_mask_lambda`. This term simply pushes the average mask value downward, so it acts as a crude sparsity prior on mask activation. However, it did not produce useful static-dynamic separation and is not part of the final method reported in this project.
 
 ### 4.5 Why These Losses Are Needed
 
@@ -262,7 +262,13 @@ These diagnostics do not measure ground-truth motion accuracy. They only quantif
 
 ### 6.1 Early Pilot Observation
 
-The earliest motion-mask prototype used only a sparsity-style term. On both slow-motion and strong-motion scenes, that design failed to produce meaningful static-dynamic separation. In some runs the mask stayed soft with near-zero dynamic fraction; in other runs stronger regularization caused trivial all-dynamic collapse. This pilot result motivated the final method based on binarization and static-deformation regularization.
+The earliest motion-mask prototype used only the mask-mean penalty
+
+\[
+\mathcal{L}_{\text{mask}}=\frac{1}{N}\sum_i m_i(t),
+\]
+
+without the later binarization and static-deformation terms. This design did not produce meaningful static-dynamic separation. On both slow-motion and strong-motion scenes, some runs kept the mask soft with near-zero dynamic fraction, while other runs under stronger regularization collapsed toward a trivial all-dynamic solution. This pilot result motivated the final method based on binarization and static-deformation regularization.
 
 ### 6.2 D-NeRF Bouncingballs
 
