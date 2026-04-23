@@ -205,19 +205,19 @@ python scripts/make_dnerf_transforms.py data/custom/M200 --time-step 0.5 --zero-
 ### Custom M200 baseline train
 
 ```bash
-python train.py -s data/custom/M200 --model_path output/custom/M200_baseline --port 6017 --expname "custom/M200_baseline" --configs arguments/dnerf/M200.py
+python train.py -s data/custom/M200 --model_path output/custom/M200_baseline --port 6017 --expname "custom/M200_baseline" --configs arguments/dnerf/M200.py --extension ""
 ```
 
 ### Custom M200 baseline render
 
 ```bash
-python render.py --model_path output/custom/M200_baseline --skip_train --configs arguments/dnerf/M200.py
+python render.py --model_path output/custom/M200_baseline --skip_train --configs arguments/dnerf/M200.py --extension ""
 ```
 
 ### Custom M200 baseline render without video
 
 ```bash
-python render.py --model_path output/custom/M200_baseline --skip_train --skip_video --configs arguments/dnerf/M200.py
+python render.py --model_path output/custom/M200_baseline --skip_train --skip_video --configs arguments/dnerf/M200.py --extension ""
 ```
 
 ### Custom M200 baseline metrics
