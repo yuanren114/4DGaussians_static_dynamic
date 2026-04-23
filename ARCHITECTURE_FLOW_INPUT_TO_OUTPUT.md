@@ -148,6 +148,66 @@ In the default configuration, opacity and SH deformation are disabled by `no_do=
 
 ### 1.4 HexPlane Feature Extraction
 
+HexPlane is not an MLP.
+
+In this codebase, `HexPlaneField` is a learnable multi-resolution 4D feature grid represented by several 2D feature planes. It is closer to a factorized lookup table than to a neural network layer. The values stored in the planes are trainable `nn.Parameter`s, and the deformation MLP reads features sampled from these planes.
+
+The name "HexPlane" comes from the six 2D coordinate planes produced by a 4D coordinate:
+
+```text
+4D coordinate: [x, y, z, t]
+
+All 2D coordinate pairs:
+  (x,y), (x,z), (x,t), (y,z), (y,t), (z,t)
+
+Number of planes = C(4,2) = 6
+```
+
+Each plane is a learned tensor:
+
+```text
+plane_{a,b}^{level l}: [1, C, resolution_b, resolution_a]
+```
+
+where:
+
+- `C = output_coordinate_dim`
+- `l` is the multi-resolution level
+- `(a,b)` is one of the six coordinate pairs
+- the plane values are optimized during training by backpropagation
+
+For example, in D-NeRF default:
+
+```text
+C = 32
+multires = [1, 2]
+base resolution = [64, 64, 64, 25]
+
+level 1 spatial resolution: [64, 64, 64, 25]
+level 2 spatial resolution: [128, 128, 128, 25]
+
+The temporal resolution stays 25 because scene/hexplane.py scales only the first three spatial dimensions.
+```
+
+For each input Gaussian and timestamp, the code does:
+
+```text
+1. Normalize x,y,z by the scene AABB.
+2. Concatenate timestamp t.
+3. Sample each of the six learned 2D planes with bilinear interpolation.
+4. Multiply the six sampled feature vectors elementwise.
+5. Repeat this at each resolution level.
+6. Concatenate the per-level feature vectors.
+```
+
+So HexPlane converts a continuous 4D coordinate into a trainable feature vector:
+
+```text
+[x,y,z,t]  --->  HexPlane learned table lookup  --->  z [N,F]
+```
+
+The output `z [N,F]` is not a coordinate and not an image feature. It is a learned spatiotemporal feature vector for each Gaussian at the current time. The downstream MLP heads use this feature to predict deformation offsets such as `Δx`, `Δs`, and `Δr`.
+
 `HexPlaneField` receives raw 3D position and time:
 
 ```text
@@ -167,7 +227,7 @@ For 4D input and 2D grids, the HexPlane uses all 2D coordinate pairs:
 For each resolution level:
 
 ```text
-sample 6 learned 2D planes
+sample 6 learned 2D planes with bilinear interpolation
         |
         v
 multiply the 6 sampled feature vectors
