@@ -431,6 +431,23 @@ Interpretation:
 - `static=2e-3, bin=1e-3` is the most balanced Jumpingjacks setting: best PSNR and best LPIPS-vgg, with SSIM nearly unchanged.
 - Unlike Bouncingballs, increasing binarization to `2e-3` hurts Jumpingjacks reconstruction.
 
+Mask diagnostics:
+
+| Method | mean | std | dynamic fraction | fraction > 0.4 | static deformation | binarization |
+|---|---:|---:|---:|---:|---:|---:|
+| Regularized variant (`static=1e-3`, `bin=1e-3`) | 0.3684 | 0.1295 | 0.0179 | 0.5809 | 0.2352 | 0.2159 |
+| Regularized variant (`static=2e-3`, `bin=1e-3`) | 0.5114 | 0.0520 | 0.6763 | 0.9613 | 0.1491 | 0.2472 |
+| Regularized variant (`static=2e-3`, `bin=2e-3`) | 0.4679 | 0.1911 | 0.4817 | 0.8345 | 0.1540 | 0.2125 |
+
+Interpretation:
+
+- Increasing `static_deform_lambda` from `1e-3` to `2e-3` reduces static-weighted deformation from about `0.2352` to about `0.1491`.
+- The best reconstruction setting, `static=2e-3, bin=1e-3`, has a high dynamic fraction, but its mask is not very binary: the binarization value is close to the maximum possible value of `0.25`.
+- The stronger binarization setting, `static=2e-3, bin=2e-3`, produces a more spread-out mask distribution, with higher standard deviation and lower binarization loss than `static=2e-3, bin=1e-3`.
+- However, `static=2e-3, bin=2e-3` hurts reconstruction metrics, so it is not the preferred Jumpingjacks setting.
+
+Thus, Jumpingjacks shows the same general tradeoff as the other scenes: cleaner or more separated masks do not always correspond to better rendered-image metrics.
+
 ### 6.5 HyperNeRF Chickchicken Results
 
 HyperNeRF chickchicken is a more difficult real-world scene than the clean synthetic D-NeRF scenes. It uses the HyperNeRF dataset format and was trained with the HyperNeRF default configuration at 14,000 fine iterations. Because of memory limits, these runs used batch size 1.
@@ -502,7 +519,7 @@ For Bouncingballs:
 For Jumpingjacks:
 
 - `static=2e-3, bin=1e-3` remains strong,
-- `static=2e-3, bin=2e-3` does not generalize and degrades reconstruction.
+- `static=2e-3, bin=2e-3` produces a more spread-out mask than `static=2e-3, bin=1e-3`, but does not generalize for reconstruction and degrades image metrics.
 
 For HyperNeRF chickchicken:
 

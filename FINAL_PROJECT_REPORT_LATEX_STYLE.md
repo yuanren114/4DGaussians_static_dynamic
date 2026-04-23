@@ -234,6 +234,16 @@ Verified Jumpingjacks reconstruction metrics:
 
 Both $\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$ and $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$ improve over baseline. However, unlike Bouncingballs, increasing the binarization weight to $2\times10^{-3}$ degrades Jumpingjacks reconstruction.
 
+Mask diagnostics:
+
+| Method | Final mean | Final std | Final dynamic fraction | Final fraction $m>0.4$ | Static deformation | Binarization |
+|---|---:|---:|---:|---:|---:|---:|
+| Regularized variant ($\lambda_{\text{static}}=10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.3684 | 0.1295 | 0.0179 | 0.5809 | 0.2352 | 0.2159 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$) | 0.5114 | 0.0520 | 0.6763 | 0.9613 | 0.1491 | 0.2472 |
+| Regularized variant ($\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$) | 0.4679 | 0.1911 | 0.4817 | 0.8345 | 0.1540 | 0.2125 |
+
+Increasing $\lambda_{\text{static}}$ from $10^{-3}$ to $2\times10^{-3}$ reduces static-weighted deformation from about $0.2352$ to about $0.1491$. The best reconstruction setting, $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=10^{-3}$, has high dynamic fraction but a weakly binary mask: its binarization diagnostic is close to the maximum possible value of $0.25$. The stronger binarization setting, $\lambda_{\text{static}}=2\times10^{-3}, \lambda_{\text{bin}}=2\times10^{-3}$, produces a more spread-out mask distribution, but it hurts reconstruction. Therefore, Jumpingjacks also shows that mask separability and image quality are related but distinct objectives.
+
 ### 4.6 Main Results: HyperNeRF Chickchicken
 
 HyperNeRF chickchicken is a more difficult real-world scene than the clean synthetic D-NeRF scenes. The runs below use the HyperNeRF default configuration, 14,000 fine iterations, and batch size 1.
@@ -259,7 +269,7 @@ Increasing $\lambda_{\text{static}}$ from $10^{-3}$ to $2\times10^{-3}$ greatly 
 
 ### 4.7 Qualitative Summary
 
-The final regularized method is most convincing on scenes with stronger motion. On Bouncingballs, the learned mask provides nontrivial soft motion localization on the moving balls, and a tradeoff appears between reconstruction quality and mask separability. On Jumpingjacks, the same regularization family improves reconstruction over baseline, but the stronger binarization setting does not generalize. On HyperNeRF chickchicken, reconstruction metrics remain close to baseline rather than improving, but the mask diagnostics show that the stronger static-deformation penalty produces a much cleaner decomposition. This suggests that the added motion-aware regularization is useful mainly as an interpretability and decomposition mechanism, while reconstruction gains are scene-dependent.
+The final regularized method is most convincing on scenes with stronger motion. On Bouncingballs, the learned mask provides nontrivial soft motion localization on the moving balls, and a tradeoff appears between reconstruction quality and mask separability. On Jumpingjacks, the same regularization family improves reconstruction over baseline, but the stronger binarization setting does not generalize for image quality, even though it produces a more spread-out mask. On HyperNeRF chickchicken, reconstruction metrics remain close to baseline rather than improving, but the mask diagnostics show that the stronger static-deformation penalty produces a much cleaner decomposition. This suggests that the added motion-aware regularization is useful mainly as an interpretability and decomposition mechanism, while reconstruction gains are scene-dependent.
 
 ## 5. Discussion
 
